@@ -46,7 +46,7 @@ const ResultsPage: React.FC = () => {
           body: JSON.stringify({
             query: `
               query {
-                getLatestDocument {
+                documents {
                   id
                   filename
                   rawText
@@ -63,10 +63,14 @@ const ResultsPage: React.FC = () => {
           throw new Error(result.errors[0].message);
         }
 
-        const document = result.data.getLatestDocument;
-        if (document) {
-          setSummary(document.metadata);
-          setDoc(document);
+        const documents = result.data.documents;
+        if (documents && documents.length > 0) {
+          // Get the most recent document
+          const latestDoc = documents.sort((a: any, b: any) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )[0];
+          setSummary(latestDoc.metadata);
+          setDoc(latestDoc);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');

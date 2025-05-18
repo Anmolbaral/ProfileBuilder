@@ -69,22 +69,7 @@ const resolvers = {
   Upload: GraphQLUpload,
   Query: {
     documents: (_: any, __: any, { prisma }: any) =>
-      prisma.extractedDocument.findMany(),
-    getLatestDocument: async (_: any, __: any, { prisma }: any) => {
-      const documents = await prisma.extractedDocument.findMany({
-        orderBy: {
-          createdAt: 'desc'
-        },
-        take: 1
-      });
-      if (documents[0]) {
-        return {
-          ...documents[0],
-          metadata: JSON.parse(documents[0].metadata)
-        };
-      }
-      return null;
-    }
+      prisma.extractedDocument.findMany()
   },
   Mutation: {
     uploadPdf: async (
