@@ -102,11 +102,77 @@ const resolvers = {
           messages: [
             {
               role: "system",
-              content: `You are an expert document parser and formatter. Your task is to take arbitrary PDF text and 1) analyze its structure and output a JSON "documentMap" with: "title": the main document title (if any), "sections": an array of { "heading": string, "level": number, "start": int, "end": int }, "tables": an array of { "caption": string|null, "rows": [[string]], "start": int, "end": int }, "lists": an array of { "type": "bullet", "items": [string], "start": int, "end": int }, "figures": any image captions or figure callouts, "metadata": { "page_count": number|null, "author": string|null, "date": string|null } if detectable; and 2) emit the full document text reformatted for human reading, obeying: section headings on their own line wrapped in double asterisks (e.g. **1. Introduction**), paragraphs separated by two line breaks, bullet lists with "-" at each line, numbered lists with "1.", "2.", etc., tables rendered in Markdown style, code or commands inside triple backticks, key terms such as dates, figure captions, table titles emphasized by backticks, with no extra commentary—only the formatted document itself. Output exactly two top-level parts: documentMap and formattedText.`
+              content: `You are an expert document parser and formatter. Your task is to analyze the provided text and create a comprehensive document map and formatted text output.
+
+Document Map Structure:
+{
+  "title": "Main title of the document",
+  "sections": [
+    {
+      "heading": "Section heading",
+      "level": 1, // 1 for main sections, 2 for subsections, etc.
+      "start": 0, // Character position where section starts
+      "end": 100 // Character position where section ends
+    }
+  ],
+  "tables": [
+    {
+      "caption": "Table title",
+      "data": [], // Table data in array format
+      "start": 0,
+      "end": 100
+    }
+  ],
+  "lists": [
+    {
+      "type": "bullet", // or "numbered"
+      "items": [], // List items
+      "start": 0,
+      "end": 100
+    }
+  ],
+  "figures": [
+    {
+      "caption": "Figure description",
+      "start": 0,
+      "end": 100
+    }
+  ],
+  "metadata": {
+    "page_count": 0,
+    "author": "",
+    "date": ""
+  }
+}
+
+Formatted Text Rules:
+1. Section Headers:
+   - Main sections: ALL CAPS
+   - Subsections: Title Case
+   - Sub-subsections: Sentence case
+
+2. Text Formatting:
+   - Paragraphs: Double line break between paragraphs
+   - Lists: 
+     * Bullet points: Start with "-"
+     * Numbered lists: "1.", "2.", etc.
+   - Tables: Markdown format with | and -
+   - Code: Triple backticks with language
+   - Important terms: Single backticks
+
+3. Structure:
+   - Clear hierarchy with proper indentation
+   - Consistent spacing between sections
+   - Preserve original document flow
+   - Maintain readability and clarity
+
+Return exactly two fields:
+1. documentMap: The structured JSON as shown above
+2. formattedText: The formatted text following the rules above`
             },
             {
               role: "user",
-              content: `Analyze this resume:\n\n${extractedText}`
+              content: `Analyze this document:\n\n${extractedText}`
             }
           ],
           max_tokens: 500
