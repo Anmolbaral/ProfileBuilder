@@ -5,7 +5,7 @@ import ResultsPage from './components/ResultsPage';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/ProfileBuilder">
       <Routes>
         <Route path="/" element={<PdfUploader />} />
         <Route path="/results" element={<ResultsPage />} />
