@@ -1,17 +1,116 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Box, Container, Typography, Paper, CircularProgress, Button } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Link } from 'react-router-dom';
 
-export default function ResultsPage() {
+interface SummaryData {
+  title: string;
+  sections: Array<{
+    heading: string;
+    level: number;
+    start: number;
+    end: number;
+  }>;
+  tables: any[];
+  lists: any[];
+  figures: any;
+  metadata: {
+    page_count: number | null;
+    author: string | null;
+    date: string | null;
+  };
+}
+
+const ResultsPage: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<SummaryData | null>(null);
   const [doc, setDoc] = useState<any>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        const response = await fetch('http://localhost:4000/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `
+              query {
+                getLatestDocument {
+                  id
+                  filename
+                  rawText
+                  metadata
+                }
+              }
+            `,
+          }),
+        });
+
+        const result = await response.json();
+        if (result.errors) {
+          throw new Error(result.errors[0].message);
+        }
+
+        const document = result.data.getLatestDocument;
+        if (document) {
+          setSummary(JSON.parse(document.metadata));
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem('pdfResults');
     if (stored) setDoc(JSON.parse(stored));
     resultsRef.current?.focus();
   }, []);
+
+  const handleBack = () => {
+    navigate('/');
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography color="error" gutterBottom>
+            Error: {error}
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<ArrowBackIcon />}
+            onClick={handleBack}
+            sx={{ mt: 2 }}
+          >
+            Back to Upload
+          </Button>
+        </Paper>
+      </Container>
+    );
+  }
 
   if (!doc) {
     return (
@@ -110,4 +209,6 @@ export default function ResultsPage() {
       </div>
     </Tooltip.Provider>
   );
-} 
+};
+
+export default ResultsPage; 
