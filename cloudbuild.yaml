@@ -1,0 +1,47 @@
+steps:
+  # Build and push the server
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/pdf-extractor-server', '-f', './server/Dockerfile', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/pdf-extractor-server']
+
+  # Build and push the frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/pdf-extractor-frontend', '-f', './app/Dockerfile', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/pdf-extractor-frontend']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'pdf-extractor-server'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/pdf-extractor-server'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'pdf-extractor-frontend'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/pdf-extractor-frontend'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+timeout: '1800s'
+
+images:
+  - 'gcr.io/$PROJECT_ID/pdf-extractor-server'
+  - 'gcr.io/$PROJECT_ID/pdf-extractor-frontend' 
