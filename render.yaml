@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: pdf-extractor-server
+    runtime: docker
+    rootDir: server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: OPENAI_API_KEY
+        sync: false 

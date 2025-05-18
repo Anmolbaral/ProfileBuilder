@@ -1,13 +1,25 @@
-FROM node:20-alpine
+FROM node:20-slim
 
-WORKDIR /server
+WORKDIR /app
 
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
 
+# Install dependencies
+RUN npm install
+
+# Copy source code
 COPY . .
 
-ENV PORT=8080
-EXPOSE ${PORT}
+# Generate Prisma client
+RUN npx prisma generate
 
-CMD ["yarn", "dev"] 
+# Build TypeScript
+RUN npm run build
+
+# Expose port
+EXPOSE 4000
+
+# Start the server
+CMD ["npm", "start"] 

@@ -2,8 +2,14 @@
   "type": "module",
   "name": "server",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/server.js",
   "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts",
+    "postinstall": "prisma generate"
+  },
   "dependencies": {
     "@apollo/server": "^4.12.1",
     "@prisma/client": "^6.8.1",
@@ -27,8 +33,5 @@
     "@types/pdf-parse": "^1.1.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
-  },
-  "scripts": {
-    "dev": "NODE_OPTIONS='--loader ts-node/esm' node src/server.ts"
   }
 }

@@ -161,12 +161,23 @@ async function start() {
   const allowedOrigins = [
     'http://localhost:5173',
     'https://studio.apollographql.com',
+    'https://anmolbaral.github.io',
+    'https://anmolbaral.github.io/ProfileBuilder',
     process.env.FRONTEND_URL
-  ].filter(Boolean) as string[]; // Filter out undefined values
+  ].filter(Boolean) as string[];
 
   app.use(cors({
     origin: allowedOrigins,
-    credentials: true
+    credentials: false,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Apollo-Require-Preflight',
+      'Accept',
+      'Origin',
+      'X-Requested-With'
+    ]
   }));
 
   // 1) must come BEFORE body-parsers:
