@@ -2,7 +2,7 @@ import { ApolloClient, InMemoryCache } from '@apollo/client';
 import { createUploadLink } from 'apollo-upload-client';
 
 // Get the GraphQL URL from environment variables
-const GRAPHQL_URL = import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:4000/graphql';
+const GRAPHQL_URL = 'https://profilebuilder-uejc.onrender.com/graphql';
 
 console.log('Using GraphQL URL:', GRAPHQL_URL); // Debug log
 
