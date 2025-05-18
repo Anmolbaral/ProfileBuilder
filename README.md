@@ -70,13 +70,9 @@ The application is deployed using:
 - Backend: Render.com for the Node.js server
 - Database: Render.com PostgreSQL service
 
-## Contributing
 
-Feel free to submit issues and enhancement requests!
 
-## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
 
----
+
 

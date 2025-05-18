@@ -5,7 +5,7 @@ module.exports = {
   ],
   theme: {
     extend: {
-      // Add customizations here if needed, but do not override the default theme
+      // Custom css if needed to override the default theme
     },
   },
   plugins: [],
