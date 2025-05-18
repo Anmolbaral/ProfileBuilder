@@ -8,12 +8,13 @@ RUN apt-get update -y && apt-get install -y openssl
 # Copy package files
 COPY server/package*.json ./
 COPY server/prisma ./prisma/
+COPY server/tsconfig.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy source code
-COPY server/ .
+COPY server/src ./src
 
 # Generate Prisma client
 RUN npx prisma generate
