@@ -196,7 +196,7 @@ const ResultsPage: React.FC = () => {
                     <CardContent className="pt-0 w-full">
                       <div className="table-wrapper p-5">
                         <div className="details-table bg-[var(--card-bg)] rounded-lg">
-                          <div className="p-[80px] text-[var(--fg)] whitespace-pre-wrap lined-paper-bg">
+                          <div className="text-[var(--fg)] whitespace-pre-wrap lined-paper-bg">
                             {doc.rawText}
                           </div>
                         </div>

@@ -421,6 +421,7 @@ button:focus-visible {
   background-repeat: repeat-y, no-repeat;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 80px;
 }
 
 /* Result card micro-interactions */
