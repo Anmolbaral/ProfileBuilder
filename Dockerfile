@@ -32,12 +32,14 @@ RUN cp schema.graphql dist/
 # Verify build output
 RUN ls -la dist/
 
+# Create startup script
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'npx prisma migrate deploy' >> /app/start.sh && \
+    echo 'npm start' >> /app/start.sh && \
+    chmod +x /app/start.sh
+
 # Expose port
 EXPOSE 4000
-
-# Create a startup script
-RUN echo '#!/bin/sh\nnpx prisma migrate deploy\nnpm start' > /app/start.sh && \
-    chmod +x /app/start.sh
 
 # Start the server
 CMD ["/app/start.sh"] 
