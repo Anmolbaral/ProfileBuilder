@@ -124,31 +124,6 @@ const ResultsPage: React.FC = () => {
     );
   }
 
-  const formatSummary = (summary: SummaryData) => {
-    let formattedText = `Title: ${summary.title}\n\n`;
-    
-    // Add sections
-    formattedText += "Sections:\n";
-    summary.sections.forEach((section, index) => {
-      const indent = "  ".repeat(section.level);
-      formattedText += `${indent}${section.heading}\n`;
-    });
-
-    // Add metadata
-    formattedText += "\nMetadata:\n";
-    if (summary.metadata.page_count) {
-      formattedText += `  Page Count: ${summary.metadata.page_count}\n`;
-    }
-    if (summary.metadata.author) {
-      formattedText += `  Author: ${summary.metadata.author}\n`;
-    }
-    if (summary.metadata.date) {
-      formattedText += `  Date: ${summary.metadata.date}\n`;
-    }
-
-    return formattedText;
-  };
-
   return (
     <Tooltip.Provider>
       <div className="w-screen min-h-screen flex flex-col items-center bg-gray-50">
@@ -207,9 +182,21 @@ const ResultsPage: React.FC = () => {
                       <CardContent className="pt-0 w-full">
                         <div className="table-wrapper p-5">
                           <div className="details-table bg-[var(--card-bg)] rounded-lg">
-                            <pre className="raw-text whitespace-pre-wrap p-10 text-[var(--fg)]">
-                              {formatSummary(summary)}
-                            </pre>
+                            <div className="p-10 text-[var(--fg)] whitespace-pre-wrap">
+                              {summary.title && <h2 className="text-2xl font-bold mb-4">{summary.title}</h2>}
+                              {summary.sections.map((section, index) => (
+                                <div key={index} className="mb-4">
+                                  <h3 className={`font-semibold mb-2 ${section.level === 1 ? 'text-xl' : 'text-lg'}`}>
+                                    {section.heading}
+                                  </h3>
+                                </div>
+                              ))}
+                              {summary.metadata.page_count && (
+                                <div className="mt-4 text-sm text-gray-600">
+                                  Pages: {summary.metadata.page_count}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </CardContent>
@@ -224,9 +211,9 @@ const ResultsPage: React.FC = () => {
                     <CardContent className="pt-0 w-full">
                       <div className="table-wrapper p-5">
                         <div className="details-table bg-[var(--card-bg)] rounded-lg">
-                          <pre className="raw-text whitespace-pre-wrap p-10 text-[var(--fg)]">
+                          <div className="p-10 text-[var(--fg)] whitespace-pre-wrap">
                             {doc.rawText}
-                          </pre>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
