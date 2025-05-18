@@ -2,7 +2,6 @@ services:
   - type: web
     name: pdf-extractor-server
     runtime: docker
-    rootDir: server
     envVars:
       - key: NODE_ENV
         value: production
