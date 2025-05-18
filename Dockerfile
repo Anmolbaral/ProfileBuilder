@@ -11,7 +11,7 @@ RUN apk update && \
 COPY server/package*.json ./
 COPY server/prisma ./prisma/
 COPY server/tsconfig.json ./
-COPY server/schema.graphql ./
+COPY server/src/schema.graphql ./
 
 # Install dependencies with security fixes
 RUN npm install && \
