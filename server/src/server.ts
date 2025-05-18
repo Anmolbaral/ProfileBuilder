@@ -39,48 +39,29 @@ async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
-// Helper to extract text from PDF using OpenAI
-async function extractTextWithOpenAI(buffer: Buffer): Promise<string> {
+// Helper to extract and structure information from PDF text
+async function extractStructuredInfo(text: string): Promise<any> {
   try {
-    console.log('Starting OpenAI processing...');
-    console.log('Buffer size:', buffer.length);
-    
-    const base64PDF = buffer.toString('base64');
-    console.log('Base64 PDF length:', base64PDF.length);
-
     const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: "gpt-3.5-turbo",
       messages: [
         {
+          role: "system",
+          content: "You are a PDF parser that extracts structured information from text. Extract the following information if available: name, email, phone, education (as an array of objects with institution, degree, year), experience (as an array of objects with company, position, duration), skills (as an array). Return the data in JSON format."
+        },
+        {
           role: "user",
-          content: [
-            { type: "text", text: "Extract and summarize the key information from this PDF document." },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:application/pdf;base64,${base64PDF}`
-              }
-            }
-          ]
+          content: text
         }
       ],
-      max_tokens: 1000
+      response_format: { type: "json_object" }
     });
 
-    console.log('OpenAI Response:', response);
-    const extractedText = response.choices[0].message.content || '';
-    console.log('Extracted text:', extractedText);
-    return extractedText;
+    const structuredData = JSON.parse(response.choices[0].message.content || '{}');
+    return structuredData;
   } catch (error) {
-    console.error('OpenAI API error:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        message: error.message,
-        name: error.name,
-        stack: error.stack
-      });
-    }
-    return '';
+    console.error('Error in structured info extraction:', error);
+    return {};
   }
 }
 
@@ -101,42 +82,55 @@ const resolvers = {
         const { createReadStream, filename } = await file;
         console.log('File details:', { filename });
         
+        // 1. Read the file into buffer
         const buffer = await streamToBuffer(createReadStream());
         console.log('File buffer created, size:', buffer.length);
         
-        // Extract text using pdf-parse
+        // 2. Extract text using pdf-parse
         const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
         const pdfData = await pdfParse(buffer);
         const extractedText = pdfData.text;
         console.log('Extracted text from PDF:', extractedText.slice(0, 500)); // log first 500 chars
         
-        // Send extracted text to OpenAI for summarization/analysis
+        // 3. Get structured information
+        const structuredInfo = await extractStructuredInfo(extractedText);
+        console.log('Structured information:', structuredInfo);
+        
+        // 4. Generate summary
         const openaiResponse = await openai.chat.completions.create({
           model: "gpt-3.5-turbo",
           messages: [
-            { role: "user", content: `Summarize the following document:\n\n${extractedText}` }
+            {
+              role: "system",
+              content: "You are a professional resume analyzer. Provide a concise summary of the candidate's profile, highlighting their key strengths and experience."
+            },
+            {
+              role: "user",
+              content: `Analyze this resume:\n\n${extractedText}`
+            }
           ],
-          max_tokens: 1000
+          max_tokens: 500
         });
         const summary = openaiResponse.choices[0].message.content || '';
         console.log('OpenAI summary:', summary);
         
-        // Use pdf-lib to get page count
+        // 5. Get page count
         const pdfDoc = await PDFDocument.load(buffer);
         const pageCount = pdfDoc.getPageCount();
         console.log('PDF page count:', pageCount);
         
-        // Store both the extracted text, summary, and metadata
-        const metadata = { 
+        // 6. Store everything in the database
+        const metadata = {
           pageCount,
-          summary
+          summary,
+          ...structuredInfo
         };
         
         const result = await prisma.extractedDocument.create({
-          data: { 
-            filename, 
-            rawText: extractedText, 
-            metadata 
+          data: {
+            filename,
+            rawText: extractedText,
+            metadata
           },
         });
         
@@ -144,7 +138,14 @@ const resolvers = {
         return result;
       } catch (error) {
         console.error('Error in uploadPdf mutation:', error);
-        throw error;
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            message: error.message,
+            name: error.name,
+            stack: error.stack
+          });
+        }
+        throw new Error('Failed to process PDF. Please ensure it is a valid PDF file and try again.');
       }
     },
   },
@@ -157,18 +158,21 @@ async function start() {
   const app = express();
   
   // Enable CORS for all routes
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'https://studio.apollographql.com',
+    process.env.FRONTEND_URL
+  ].filter(Boolean) as string[]; // Filter out undefined values
+
   app.use(cors({
-    origin: [
-      'http://localhost:5173',
-      'https://studio.apollographql.com'
-    ],
+    origin: allowedOrigins,
     credentials: true
   }));
 
   // 1) must come BEFORE body-parsers:
   app.use('/graphql', graphqlUploadExpress({ 
-    maxFileSize: 10_000_000, 
-    maxFiles: 1 
+    maxFileSize: 10_000_000, // 10MB
+    maxFiles: 1
   }));
 
   // 2) JSON/urlencoded parsing
@@ -183,8 +187,9 @@ async function start() {
     })
   );
 
-  app.listen(4000, () =>
-    console.log('🚀 Server ready at http://localhost:4000/graphql')
+  const port = process.env.PORT || 4000;
+  app.listen(port, () =>
+    console.log(`🚀 Server ready at http://localhost:${port}/graphql`)
   );
 }
 
