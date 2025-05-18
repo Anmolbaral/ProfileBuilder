@@ -2,7 +2,7 @@ import { ApolloClient, InMemoryCache } from '@apollo/client';
 import { createUploadLink } from 'apollo-upload-client';
 
 // GraphQL URL from environment variables
-const GRAPHQL_URL = 'https://profilebuilder-uejc.onrender.com/graphql';
+const GRAPHQL_URL = 'http://localhost:4000/graphql';
 
 console.log('Using GraphQL URL:', GRAPHQL_URL); // Debug log
 
@@ -21,11 +21,11 @@ export const client = new ApolloClient({
   cache: new InMemoryCache(),
   defaultOptions: {
     watchQuery: {
-      fetchPolicy: 'no-cache',
+      fetchPolicy: 'network-only',
       errorPolicy: 'ignore',
     },
     query: {
-      fetchPolicy: 'no-cache',
+      fetchPolicy: 'network-only',
       errorPolicy: 'all',
     },
     mutate: {
@@ -33,3 +33,6 @@ export const client = new ApolloClient({
     }
   }
 });
+
+// Clear the cache on initialization
+client.resetStore();
