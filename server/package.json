@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node --experimental-specifier-resolution=node dist/server.js",
-    "dev": "ts-node src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -33,6 +33,7 @@
     "@types/node": "^22.15.18",
     "@types/pdf-parse": "^1.1.5",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }
 }

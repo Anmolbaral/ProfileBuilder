@@ -8,7 +8,13 @@
     "rootDir": "./src",
     "strict": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": true,
+    "resolveJsonModule": true
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifiers": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]
