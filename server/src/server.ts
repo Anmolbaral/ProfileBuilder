@@ -130,7 +130,7 @@ const resolvers = {
           data: {
             filename,
             rawText: extractedText,
-            metadata: JSON.stringify(metadata)
+            metadata
           },
         });
         
