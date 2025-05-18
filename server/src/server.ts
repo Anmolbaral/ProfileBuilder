@@ -47,7 +47,7 @@ async function extractStructuredInfo(text: string): Promise<any> {
       messages: [
         {
           role: "system",
-          content: "You are a PDF parser that extracts structured information from text. Extract the following information if available: name, email, phone, education (as an array of objects with institution, degree, year), experience (as an array of objects with company, position, duration), skills (as an array). Return the data in JSON format."
+          content: `You are a PDF parser that extracts structured information from text. Extract the following information if available: name, email, phone, education (as an array of objects with institution, degree, year), experience (as an array of objects with company, position, duration), skills (as an array). Return the data in JSON format.\n\nAdditionally, for the raw text output, format it for maximum readability:\n- Clearly separate paragraphs with double line breaks.\n- Identify and format headings (such as section titles or bold/large text) by placing them on their own line, surrounded by double asterisks (e.g., **Heading**).\n- For bullet points or lists, use a dash (-) or bullet (•) at the start of each item, and keep each bullet on its own line.\n- If there are numbered lists, use 1., 2., etc., at the start of each item.\n- Preserve any indentation or structure that helps clarify the document's organization.\n- Do not include any extra commentary or explanation—just return the formatted text.`
         },
         {
           role: "user",
@@ -102,7 +102,7 @@ const resolvers = {
           messages: [
             {
               role: "system",
-              content: "You are a professional resume analyzer. Provide a concise summary of the candidate's profile, highlighting their key strengths and experience."
+              content: `You are an expert document parser and formatter. Your task is to take arbitrary PDF text and 1) analyze its structure and output a JSON "documentMap" with: "title": the main document title (if any), "sections": an array of { "heading": string, "level": number, "start": int, "end": int }, "tables": an array of { "caption": string|null, "rows": [[string]], "start": int, "end": int }, "lists": an array of { "type": "bullet", "items": [string], "start": int, "end": int }, "figures": any image captions or figure callouts, "metadata": { "page_count": number|null, "author": string|null, "date": string|null } if detectable; and 2) emit the full document text reformatted for human reading, obeying: section headings on their own line wrapped in double asterisks (e.g. **1. Introduction**), paragraphs separated by two line breaks, bullet lists with "-" at each line, numbered lists with "1.", "2.", etc., tables rendered in Markdown style, code or commands inside triple backticks, key terms such as dates, figure captions, table titles emphasized by backticks, with no extra commentary—only the formatted document itself. Output exactly two top-level parts: documentMap and formattedText.`
             },
             {
               role: "user",

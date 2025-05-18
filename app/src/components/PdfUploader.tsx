@@ -1,13 +1,12 @@
 // src/components/PdfUploader.tsx
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useMutation, gql } from '@apollo/client'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { DocumentVisualization } from './DocumentVisualization'
-import { LoadingSkeleton } from './LoadingSkeleton'
+import { useNavigate } from 'react-router-dom'
 
 const UPLOAD_PDF = gql`
   mutation UploadPdf($file: Upload!) {
@@ -23,24 +22,16 @@ const UPLOAD_PDF = gql`
 
 export function PdfUploader() {
   const [file, setFile] = useState<File | null>(null)
-  const [uploadPdf, { loading, error, data }] = useMutation(UPLOAD_PDF)
-  const [showResults, setShowResults] = useState(false)
+  const [uploadPdf, { loading, error }] = useMutation(UPLOAD_PDF)
   const [isDragging, setIsDragging] = useState(false)
-  const resultsRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (showResults && !loading) {
-      resultsRef.current?.focus()
-    }
-  }, [showResults, loading])
+  const navigate = useNavigate()
 
   const handleUpload = async () => {
     if (!file) return
-    setShowResults(false)
     try {
       const result = await uploadPdf({ variables: { file } })
-      console.log('Upload result:', result)
-      setShowResults(true)
+      localStorage.setItem('pdfResults', JSON.stringify(result.data.uploadPdf))
+      navigate('/results')
     } catch (err) {
       console.error('Upload error:', err)
     }
@@ -65,8 +56,6 @@ export function PdfUploader() {
     }
   }, [])
 
-  const doc = data?.uploadPdf
-
   return (
     <Tooltip.Provider>
       <div className="w-screen min-h-screen flex flex-col items-center bg-gray-50 px-4 sm:px-8 md:px-16 lg:px-32">
@@ -79,7 +68,7 @@ export function PdfUploader() {
           </div>
         </nav>
 
-        {/* Hero Section & Upload Card */}
+        {/* Main Content */}
         <main className="w-full flex flex-col items-center justify-center flex-1">
           <div className="w-full max-w-7xl mx-auto p-12 bg-white/30 backdrop-blur-sm shadow-xl mt-32 rounded-[3rem]">
             <div className="w-full flex flex-col items-center h-[100px] justify-between">
@@ -119,36 +108,67 @@ export function PdfUploader() {
                       />
                     </svg>
                   </div>
-                  <div className="flex items-center justify-center gap-6 w-full h-[70px]" style={{ gap: '24px' }}>
+
+                  {/* File Display
+                  {file && (
+                    <div className="w-full flex items-center justify-between bg-white p-4 rounded-lg shadow">
+                      <div className="flex items-center gap-4">
+                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-lg font-medium text-gray-700">{file.name}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFile(null)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )} */}
+
+                  {/* Upload controls */}
+                  <div className="flex items-center justify-center gap-6 w-full h-[70px] bg-white rounded-xl relative z-10" style={{ gap: '24px' }}>
                     <Input
                       type="file"
                       accept=".pdf"
                       onChange={e => setFile(e.target.files?.[0] || null)}
                       className="hidden"
                       id="file-upload"
-                      disabled={loading}
+                      disabled={loading || file !== null}
                     />
                     <Button
                       onClick={() => document.getElementById('file-upload')?.click()}
-                      disabled={loading}
+                      disabled={loading || file !== null}
                       className="bg-gradient-to-r from-indigo-600 via-blue-500 to-cyan-400 hover:from-indigo-700 hover:via-blue-600 hover:to-cyan-500 hover:scale-105 transition-transform"
                     >
-                      Browse Files
+                      Select PDF
                     </Button>
                     {file && (
-                      <p className="text-lg font-medium text-orange-500 min-w-[200px] text-center">
-                        {file.name}
-                      </p>
-                    )}
-                    {file && !loading && (
-                      <Button
-                        onClick={handleUpload}
-                        className="bg-gradient-to-r from-indigo-600 via-blue-500 to-cyan-400 hover:from-indigo-700 hover:via-blue-600 hover:to-cyan-500 hover:scale-105 transition-transform"
-                      >
-                        Upload
-                      </Button>
+                      <>
+                        <p className="text-lg font-medium text-orange-500 min-w-[200px] text-center">
+                          {file.name}
+                        </p>
+                        <Button
+                          onClick={handleUpload}
+                          disabled={loading}
+                          className="bg-gradient-to-r from-green-600 via-green-500 to-green-400 hover:from-green-700 hover:via-green-600 hover:to-green-500 hover:scale-105 transition-transform"
+                        >
+                          {loading ? 'Uploading...' : 'Upload'}
+                        </Button>
+                      </>
                     )}
                   </div>
+                  {file && (
+                    <Button
+                      onClick={() => setFile(null)}
+                      className="bg-gradient-to-r from-red-600 via-red-500 to-red-400 hover:from-red-700 hover:via-red-600 hover:to-red-500 hover:scale-105 transition-transform mt-4"
+                    >
+                      Remove File
+                    </Button>
+                  )}
                   {error && (
                     <div className="mt-4 text-red-500 text-sm">{error.message}</div>
                   )}
@@ -157,23 +177,6 @@ export function PdfUploader() {
             </div>
           </div>
         </main>
-
-        {/* Results Panel */}
-        {(loading || showResults) && (
-          <div
-            tabIndex={-1}
-            ref={resultsRef}
-            className={cn(
-              'results-panel',
-              loading ? 'results-panel-loading' : 'results-panel-content'
-            )}
-          >
-            <div className="w-full p-2 flex flex-col items-center justify-center">
-              {loading && <LoadingSkeleton />}
-              {doc && showResults && !loading && <DocumentVisualization doc={doc} />}
-            </div>
-          </div>
-        )}
       </div>
     </Tooltip.Provider>
   )
