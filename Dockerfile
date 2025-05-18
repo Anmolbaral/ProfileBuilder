@@ -22,6 +22,9 @@ RUN npx prisma generate
 # Build TypeScript
 RUN npm run build
 
+# Verify build output
+RUN ls -la dist/
+
 # Expose port
 EXPOSE 4000
 
