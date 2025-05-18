@@ -7,17 +7,19 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { Link } from 'react-router-dom';
 
 interface SummaryData {
-  title: string;
-  sections: Array<{
+  pageCount: number;
+  summary: string;
+  title?: string;
+  sections?: Array<{
     heading: string;
     level: number;
     start: number;
     end: number;
   }>;
-  tables: any[];
-  lists: any[];
-  figures: any;
-  metadata: {
+  tables?: any[];
+  lists?: any[];
+  figures?: any;
+  metadata?: {
     page_count: number | null;
     author: string | null;
     date: string | null;
@@ -63,7 +65,7 @@ const ResultsPage: React.FC = () => {
 
         const document = result.data.getLatestDocument;
         if (document) {
-          setSummary(JSON.parse(document.metadata));
+          setSummary(document.metadata);
           setDoc(document);
         }
       } catch (err) {
@@ -170,11 +172,11 @@ const ResultsPage: React.FC = () => {
                             </tr>
                             <tr>
                               <th>Page Count</th>
-                              <td>{summary?.metadata?.page_count ?? '—'}</td>
+                              <td>{summary?.pageCount ?? '—'}</td>
                             </tr>
                             <tr>
                               <th>Summary</th>
-                              <td>{summary?.title ?? '—'}</td>
+                              <td>{summary?.summary ?? '—'}</td>
                             </tr>
                           </tbody>
                         </table>
