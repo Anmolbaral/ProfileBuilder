@@ -180,6 +180,11 @@ async function start() {
     ]
   }));
 
+  // Add a health check endpoint
+  app.get('/', (req, res) => {
+    res.send('Server is running');
+  });
+
   // 1) must come BEFORE body-parsers:
   app.use('/graphql', graphqlUploadExpress({ 
     maxFileSize: 10_000_000, // 10MB

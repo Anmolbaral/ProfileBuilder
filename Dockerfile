@@ -35,5 +35,9 @@ RUN ls -la dist/
 # Expose port
 EXPOSE 4000
 
+# Create a startup script
+RUN echo '#!/bin/sh\nnpx prisma migrate deploy\nnpm start' > /app/start.sh && \
+    chmod +x /app/start.sh
+
 # Start the server
-CMD ["npm", "start"] 
+CMD ["/app/start.sh"] 
