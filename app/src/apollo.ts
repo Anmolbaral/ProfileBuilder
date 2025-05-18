@@ -5,6 +5,10 @@ const uploadLink = createUploadLink({
   uri: import.meta.env.VITE_GRAPHQL_URL,
   headers: {
     'Apollo-Require-Preflight': 'true'
+  },
+  credentials: 'include',
+  fetchOptions: {
+    mode: 'cors'
   }
 });
 
