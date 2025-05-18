@@ -63,6 +63,7 @@ const ResultsPage: React.FC = () => {
         const document = result.data.getLatestDocument;
         if (document) {
           setSummary(JSON.parse(document.metadata));
+          setDoc(document);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -72,12 +73,6 @@ const ResultsPage: React.FC = () => {
     };
 
     fetchResults();
-  }, []);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('pdfResults');
-    if (stored) setDoc(JSON.parse(stored));
-    resultsRef.current?.focus();
   }, []);
 
   const handleBack = () => {
@@ -129,6 +124,31 @@ const ResultsPage: React.FC = () => {
     );
   }
 
+  const formatSummary = (summary: SummaryData) => {
+    let formattedText = `Title: ${summary.title}\n\n`;
+    
+    // Add sections
+    formattedText += "Sections:\n";
+    summary.sections.forEach((section, index) => {
+      const indent = "  ".repeat(section.level);
+      formattedText += `${indent}${section.heading}\n`;
+    });
+
+    // Add metadata
+    formattedText += "\nMetadata:\n";
+    if (summary.metadata.page_count) {
+      formattedText += `  Page Count: ${summary.metadata.page_count}\n`;
+    }
+    if (summary.metadata.author) {
+      formattedText += `  Author: ${summary.metadata.author}\n`;
+    }
+    if (summary.metadata.date) {
+      formattedText += `  Date: ${summary.metadata.date}\n`;
+    }
+
+    return formattedText;
+  };
+
   return (
     <Tooltip.Provider>
       <div className="w-screen min-h-screen flex flex-col items-center bg-gray-50">
@@ -172,19 +192,29 @@ const ResultsPage: React.FC = () => {
                               <th>Created At</th>
                               <td>{new Date(doc.createdAt).toLocaleString()}</td>
                             </tr>
-                            <tr>
-                              <th>Page Count</th>
-                              <td>{doc.metadata?.pageCount ?? '—'}</td>
-                            </tr>
-                            <tr>
-                              <th>Summary</th>
-                              <td>{doc.metadata?.summary ?? '—'}</td>
-                            </tr>
                           </tbody>
                         </table>
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Summary Card */}
+                  {summary && (
+                    <Card className="metadata-card w-full flex flex-col items-center justify-center result-card border-none p-5">
+                      <CardHeader className="w-full text-center pb-2">
+                        <CardTitle className="metadata-card__header">Summary</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0 w-full">
+                        <div className="table-wrapper p-5">
+                          <div className="details-table bg-[var(--card-bg)] rounded-lg">
+                            <pre className="raw-text whitespace-pre-wrap p-10 text-[var(--fg)]">
+                              {formatSummary(summary)}
+                            </pre>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Raw Text Card */}
                   <Card className="metadata-card w-full flex flex-col items-center justify-center result-card border-none p-5">
