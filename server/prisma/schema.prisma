@@ -1,0 +1,17 @@
+
+datasource db {
+  provider = "postgresql"        // matches our .env
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ExtractedDocument {
+  id        String   @id @default(uuid())
+  filename  String
+  rawText   String
+  metadata  Json
+  createdAt DateTime @default(now())
+}
