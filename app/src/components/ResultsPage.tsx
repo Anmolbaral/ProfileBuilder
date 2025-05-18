@@ -49,6 +49,7 @@ const ResultsPage: React.FC = () => {
                   filename
                   rawText
                   metadata
+                  createdAt
                 }
               }
             `,
@@ -167,41 +168,19 @@ const ResultsPage: React.FC = () => {
                               <th>Created At</th>
                               <td>{new Date(doc.createdAt).toLocaleString()}</td>
                             </tr>
+                            <tr>
+                              <th>Page Count</th>
+                              <td>{summary?.metadata?.page_count ?? '—'}</td>
+                            </tr>
+                            <tr>
+                              <th>Summary</th>
+                              <td>{summary?.title ?? '—'}</td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
                     </CardContent>
                   </Card>
-
-                  {/* Summary Card */}
-                  {summary && (
-                    <Card className="metadata-card w-full flex flex-col items-center justify-center result-card border-none p-5">
-                      <CardHeader className="w-full text-center pb-2">
-                        <CardTitle className="metadata-card__header">Summary</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0 w-full">
-                        <div className="table-wrapper p-5">
-                          <div className="details-table bg-[var(--card-bg)] rounded-lg">
-                            <div className="p-10 text-[var(--fg)] whitespace-pre-wrap">
-                              {summary.title && <h2 className="text-2xl font-bold mb-4">{summary.title}</h2>}
-                              {summary.sections.map((section, index) => (
-                                <div key={index} className="mb-4">
-                                  <h3 className={`font-semibold mb-2 ${section.level === 1 ? 'text-xl' : 'text-lg'}`}>
-                                    {section.heading}
-                                  </h3>
-                                </div>
-                              ))}
-                              {summary.metadata.page_count && (
-                                <div className="mt-4 text-sm text-gray-600">
-                                  Pages: {summary.metadata.page_count}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
 
                   {/* Raw Text Card */}
                   <Card className="metadata-card w-full flex flex-col items-center justify-center result-card border-none p-5">

@@ -102,73 +102,7 @@ const resolvers = {
           messages: [
             {
               role: "system",
-              content: `You are an expert document parser and formatter. Your task is to analyze the provided text and create a comprehensive document map and formatted text output.
-
-Document Map Structure:
-{
-  "title": "Main title of the document",
-  "sections": [
-    {
-      "heading": "Section heading",
-      "level": 1, // 1 for main sections, 2 for subsections, etc.
-      "start": 0, // Character position where section starts
-      "end": 100 // Character position where section ends
-    }
-  ],
-  "tables": [
-    {
-      "caption": "Table title",
-      "data": [], // Table data in array format
-      "start": 0,
-      "end": 100
-    }
-  ],
-  "lists": [
-    {
-      "type": "bullet", // or "numbered"
-      "items": [], // List items
-      "start": 0,
-      "end": 100
-    }
-  ],
-  "figures": [
-    {
-      "caption": "Figure description",
-      "start": 0,
-      "end": 100
-    }
-  ],
-  "metadata": {
-    "page_count": 0,
-    "author": "",
-    "date": ""
-  }
-}
-
-Formatted Text Rules:
-1. Section Headers:
-   - Main sections: ALL CAPS
-   - Subsections: Title Case
-   - Sub-subsections: Sentence case
-
-2. Text Formatting:
-   - Paragraphs: Double line break between paragraphs
-   - Lists: 
-     * Bullet points: Start with "-"
-     * Numbered lists: "1.", "2.", etc.
-   - Tables: Markdown format with | and -
-   - Code: Triple backticks with language
-   - Important terms: Single backticks
-
-3. Structure:
-   - Clear hierarchy with proper indentation
-   - Consistent spacing between sections
-   - Preserve original document flow
-   - Maintain readability and clarity
-
-Return exactly two fields:
-1. documentMap: The structured JSON as shown above
-2. formattedText: The formatted text following the rules above`
+              content: "You are a document analysis assistant. Your task is to provide a concise summary of the document, highlighting the key points, main topics, and any important details. Keep the summary clear and well-structured, focusing on the most relevant information. Format the summary in a way that makes it easy to read and understand."
             },
             {
               role: "user",
