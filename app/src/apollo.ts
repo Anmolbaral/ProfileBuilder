@@ -4,6 +4,8 @@ import { createUploadLink } from 'apollo-upload-client';
 // Get the GraphQL URL from environment variables
 const GRAPHQL_URL = import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:4000/graphql';
 
+console.log('Using GraphQL URL:', GRAPHQL_URL); // Debug log
+
 const uploadLink = createUploadLink({
   uri: GRAPHQL_URL,
   headers: {
