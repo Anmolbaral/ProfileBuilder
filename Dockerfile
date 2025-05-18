@@ -34,6 +34,7 @@ RUN ls -la dist/
 
 # Create startup script
 RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'npx prisma migrate reset --force' >> /app/start.sh && \
     echo 'npx prisma migrate deploy' >> /app/start.sh && \
     echo 'npm start' >> /app/start.sh && \
     chmod +x /app/start.sh
