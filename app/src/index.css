@@ -675,6 +675,19 @@ button:focus-visible {
 /* Nav bar styles */
 .nav-bar {
   margin-bottom: 4rem;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.nav-bar__title {
+  background: linear-gradient(to right, #6366f1, #2563eb, #06b6d4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: clamp(2rem, 6vw, 3.75rem);
+  font-weight: 800;
+  filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.07));
 }
 
 @media (max-width: 640px) {
@@ -754,9 +767,9 @@ button:focus-visible {
   font-family: 'Roboto', sans-serif;
   width: 100%;
   height: 8rem;
-  background-color: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgb(229 231 235);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
   z-index: 50;
 }
 
@@ -772,7 +785,7 @@ button:focus-visible {
   font-family: 'Roboto', sans-serif;
   font-size: clamp(2rem, 6vw, 3.75rem);
   font-weight: 800;
-  background: linear-gradient(to right, oklch(0.55 0.15 264.665), oklch(0.45 0.15 264.665));
+  background: linear-gradient(to right, #6366f1, #2563eb, #06b6d4);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -930,9 +943,9 @@ button:focus-visible {
   font-family: 'Roboto', sans-serif;
   width: 100%;
   height: 8rem;
-  background-color: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgb(229 231 235);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
   z-index: 50;
 }
 
@@ -948,7 +961,7 @@ button:focus-visible {
   font-family: 'Roboto', sans-serif;
   font-size: clamp(2rem, 6vw, 3.75rem);
   font-weight: 800;
-  background: linear-gradient(to right, oklch(0.55 0.15 264.665), oklch(0.45 0.15 264.665));
+  background: linear-gradient(to right, #6366f1, #2563eb, #06b6d4);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -968,7 +981,7 @@ button:focus-visible {
   border-radius: 1.5rem;
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   margin: 0 auto;
-  padding: 100px;
+  padding: 20px;
   max-width: 56rem;
 }
 
@@ -1213,5 +1226,15 @@ button:focus-visible {
 
   .loading-skeleton__item {
     background: #4b5563;
+  }
+}
+
+/* Dark mode adjustments for nav bars */
+@media (prefers-color-scheme: dark) {
+  .nav-bar,
+  .pdf-uploader__nav,
+  .results-page__nav {
+    background: linear-gradient(to right, rgba(31, 41, 55, 0.9), rgba(31, 41, 55, 0.7));
+    border-bottom: 1px solid rgba(75, 85, 99, 0.5);
   }
 }

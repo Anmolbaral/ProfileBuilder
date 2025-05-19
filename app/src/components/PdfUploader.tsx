@@ -67,7 +67,7 @@ export function PdfUploader() {
         <main className="pdf-uploader__main">
           <div className="pdf-uploader__container">
             <div className="pdf-uploader__header">
-              <h1 className="pdf-uploader__heading">Let's Parse your PDF</h1>
+              <h3 className="pdf-uploader__heading">Let's Parse your PDF</h3>
               <p className="pdf-uploader__subheading">Drag or Drop your PDF file</p>
             </div>
 
