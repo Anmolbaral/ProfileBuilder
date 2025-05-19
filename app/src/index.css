@@ -777,7 +777,7 @@ button:focus-visible {
 .pdf-uploader__nav-content {
   max-width: 80rem;
   margin: 0 auto;
-  padding: 1rem 1.5rem;
+  padding: 1rem;
   display: flex;
   justify-content: center;
 }
@@ -845,7 +845,7 @@ button:focus-visible {
   text-align: center;
   user-select: none;
   height: 30px;
-  padding-bottom: 3rem;
+  padding: 2rem;
 }
 
 .pdf-uploader__card-container {
@@ -1068,7 +1068,7 @@ button:focus-visible {
 }
 
 .results-page__table td {
-  text-align: right;
+  text-align: left;
   width: 65%;
   color: #1f2937;
   font-weight: 500;
