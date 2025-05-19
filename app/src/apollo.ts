@@ -1,6 +1,7 @@
 import { ApolloClient, InMemoryCache } from '@apollo/client';
 import { createUploadLink } from 'apollo-upload-client';
 
+//Commented the local host while using render
 // GraphQL URL from environment variables
 // const GRAPHQL_URL = 'http://localhost:4000/graphql';
 const GRAPHQL_URL = 'https://profilebuilder-uejc.onrender.com/graphql';
@@ -36,5 +37,5 @@ export const client = new ApolloClient({
   }
 });
 
-// Clear the cache on initialization
+// Clear the cache on initialization for better file handeling
 client.resetStore();

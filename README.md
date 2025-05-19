@@ -68,7 +68,7 @@ npm start
 The application is deployed using:
 - Frontend: GitHub Pages for static hosting
 - Backend: Render.com for the Node.js server
-- Database: Render.com PostgreSQL service
+- Database: Render.com PostgreSQL service until Google Cloud work is complete
 
 
 
