@@ -682,7 +682,7 @@ button:focus-visible {
 
 .nav-bar__title {
   font-family: 'Roboto', sans-serif;
-  font-size: clamp(2rem, 6vw, 3.75rem);
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
   font-weight: 800;
   background: linear-gradient(to right, #6366f1, #2563eb, #06b6d4);
   -webkit-background-clip: text;
@@ -785,7 +785,7 @@ button:focus-visible {
 
 .pdf-uploader__title {
   font-family: 'Roboto', sans-serif;
-  font-size: clamp(2rem, 6vw, 3.75rem);
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
   font-weight: 800;
   background: linear-gradient(to right, #6366f1, #2563eb, #06b6d4);
   -webkit-background-clip: text;
@@ -961,7 +961,7 @@ button:focus-visible {
 
 .results-page__title {
   font-family: 'Roboto', sans-serif;
-  font-size: clamp(2rem, 6vw, 3.75rem);
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
   font-weight: 800;
   background: linear-gradient(to right, #6366f1, #2563eb, #06b6d4);
   -webkit-background-clip: text;
