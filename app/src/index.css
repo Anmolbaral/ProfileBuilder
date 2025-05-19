@@ -1286,3 +1286,8 @@ button:focus-visible {
     border-bottom: 1px solid rgba(75, 85, 99, 0.5);
   }
 }
+
+.results-page__table-content {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
