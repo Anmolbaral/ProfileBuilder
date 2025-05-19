@@ -1037,7 +1037,12 @@ button:focus-visible {
 .results-page__table-wrapper {
   width: 100%;
   padding: 2rem;
-  background: var(--card-bg, #fff);
+  background-color: #fffbe6; /* soft yellow paper */
+  background-image:
+    repeating-linear-gradient(to bottom, #b3d1ff 0px, #b3d1ff 1.5px, transparent 1.5px, transparent 32px), /* blue lines */
+    linear-gradient(to right, #ff6f61 40px, #ff6f61 41px, transparent 41px); /* red margin */
+  background-size: 100% 32px, 100% 100%;
+  background-repeat: repeat-y, no-repeat;
   border-radius: 1rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   margin-bottom: 2rem;
