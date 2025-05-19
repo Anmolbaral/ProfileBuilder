@@ -57,44 +57,34 @@ export function PdfUploader() {
 
   return (
     <Tooltip.Provider>
-      <div className="w-screen min-h-screen flex flex-col items-center bg-gray-50 px-4 sm:px-8 md:px-16 lg:px-32">
-        {/* Nav Bar */}
-        <nav className="font-roboto w-full h-32 bg-white/40 backdrop-blur-md border-b border-gray-200 z-50">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex justify-center">
-            <h1 className="font-roboto text-[6vw] md:text-5xl lg:text-6xl font-extrabold gradient-text drop-shadow-lg select-none">
-              PDF Parser
-            </h1>
+      <div className="pdf-uploader">
+        <nav className="pdf-uploader__nav">
+          <div className="pdf-uploader__nav-content">
+            <h1 className="pdf-uploader__title">PDF Parser</h1>
           </div>
         </nav>
 
-        {/* Main Content */}
-        <main className="w-full flex flex-col items-center justify-center flex-1">
-          <div className="w-full max-w-7xl mx-auto p-12 bg-white/30 backdrop-blur-sm shadow-xl mt-32 rounded-[3rem]">
-            <div className="w-full flex flex-col items-center h-[100px] justify-between">
-              <h1 className="text-8xl font-extrabold gradient-text text-center tracking-tight drop-shadow-xl select-none mt-8">
-                Let's Parse your PDF
-              </h1>
-              <p className="text-5xl text-orange-500 text-center select-non h-[30px]">
-                Drag or Drop your PDF file
-              </p>
+        <main className="pdf-uploader__main">
+          <div className="pdf-uploader__container">
+            <div className="pdf-uploader__header">
+              <h1 className="pdf-uploader__heading">Let's Parse your PDF</h1>
+              <p className="pdf-uploader__subheading">Drag or Drop your PDF file</p>
             </div>
 
-            <div className="w-full flex justify-center mt-16">
+            <div className="pdf-uploader__card-container">
               <Card
                 className={cn(
-                  'group transition-shadow duration-300 w-full max-w-4xl p-16 rounded-3xl shadow-2xl flex flex-col items-center justify-center gap-10',
-                  isDragging
-                    ? 'border-2 border-blue-500 shadow-blue-200 drag-area'
-                    : 'border-0 shadow-sm hover:shadow-lg drag-area'
+                  'pdf-uploader__card',
+                  isDragging && 'pdf-uploader__card--dragging'
                 )}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}
               >
-                <div className="flex flex-col mb-30 items-center gap-6 w-full mt-8">
-                  <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-12">
+                <div className="pdf-uploader__content">
+                  <div className="pdf-uploader__icon-container">
                     <svg 
-                      className="w-8 h-8 text-blue-600" 
+                      className="pdf-uploader__icon" 
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -108,8 +98,7 @@ export function PdfUploader() {
                     </svg>
                   </div>
 
-                  {/* Upload controls */}
-                  <div className="flex items-center justify-center gap-6 w-full h-[70px] bg-white rounded-xl relative z-10" style={{ gap: '24px' }}>
+                  <div className="pdf-uploader__controls">
                     <Input
                       type="file"
                       accept=".pdf"
@@ -127,7 +116,7 @@ export function PdfUploader() {
                     </Button>
                     {file && (
                       <>
-                        <p className="text-lg font-medium text-orange-500 min-w-[200px] text-center">
+                        <p className="pdf-uploader__file-name">
                           {file.name}
                         </p>
                         <Button
@@ -149,7 +138,7 @@ export function PdfUploader() {
                     </Button>
                   )}
                   {error && (
-                    <div className="mt-4 text-red-500 text-sm">{error.message}</div>
+                    <div className="pdf-uploader__error">{error.message}</div>
                   )}
                 </div>
               </Card>
