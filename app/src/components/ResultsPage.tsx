@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Box, Container, Typography, Paper, CircularProgress, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
@@ -27,7 +27,7 @@ interface SummaryData {
 }
 
 const ResultsPage: React.FC = () => {
-  const location = useLocation();
+  // const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +38,7 @@ const ResultsPage: React.FC = () => {
   useEffect(() => {
     const fetchResults = async () => {
       try {
-        const response = await fetch('http://localhost:4000/graphql', {
+        const response = await fetch('https://profilebuilder-uejc.onrender.com/graphql', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

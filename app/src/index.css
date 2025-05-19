@@ -610,9 +610,9 @@ button:focus-visible {
   border-bottom: none;
 }
 
-.details-table tr:hover {
+/* .details-table tr:hover {
   background-color: #f9fafb;
-}
+} */
 
 /* Table wrapper styles */
 .table-wrapper {

@@ -1,4 +1,3 @@
-// src/components/PdfUploader.tsx
 import React, { useState, useCallback } from 'react'
 import { useMutation, gql } from '@apollo/client'
 import { Card } from '@/components/ui/card'
