@@ -202,7 +202,7 @@ const ResultsPage: React.FC = () => {
                     <CardTitle className="results-page__card-title">Raw Text</CardTitle>
                   </CardHeader>
                   <CardContent className="results-page__card-content">
-                    <div className="results-page__table-wrapper">
+                    <div className="results-page__table-wrapper lined-paper-bg">
                       <div className="results-page__table">
                         <div className="results-page__table-content">
                           {doc.rawText}
