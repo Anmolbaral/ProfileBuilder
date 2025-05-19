@@ -215,7 +215,7 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  background: linear-gradient(to bottom, #eef2ff, #e0f2fe, #cffafe);
+  background: linear-gradient(135deg, #eef2ff 0%, #e0f2fe 50%, #cffafe 100%);
 }
 
 h1 {
@@ -277,7 +277,7 @@ button:focus-visible {
   }
 
   body {
-    background: linear-gradient(to bottom, oklch(0.13 0.028 261.692), oklch(0.21 0.034 264.665));
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%);
   }
 
   .document-visualization-card,
@@ -681,13 +681,15 @@ button:focus-visible {
 }
 
 .nav-bar__title {
+  font-family: 'Roboto', sans-serif;
+  font-size: clamp(2rem, 6vw, 3.75rem);
+  font-weight: 800;
   background: linear-gradient(to right, #6366f1, #2563eb, #06b6d4);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  font-size: clamp(2rem, 6vw, 3.75rem);
-  font-weight: 800;
   filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.07));
+  user-select: none;
 }
 
 @media (max-width: 640px) {
@@ -741,7 +743,7 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: rgb(249 250 251);
+  background: linear-gradient(135deg, #eef2ff 0%, #e0f2fe 50%, #cffafe 100%);
   padding: 0 1rem;
 }
 
@@ -826,7 +828,7 @@ button:focus-visible {
 .pdf-uploader__heading {
   font-size: 6rem;
   font-weight: 800;
-  background: linear-gradient(to right, oklch(0.55 0.15 264.665), oklch(0.45 0.15 264.665));
+  background: linear-gradient(to right, #6366f1, #2563eb, #06b6d4);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -936,7 +938,7 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: rgb(249 250 251);
+  background: linear-gradient(135deg, #eef2ff 0%, #e0f2fe 50%, #cffafe 100%);
 }
 
 .results-page__nav {
