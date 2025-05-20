@@ -1290,4 +1290,11 @@ button:focus-visible {
 .results-page__table-content {
   padding-left: 2rem;
   padding-right: 2rem;
+  color: #1f2937; /* dark gray for white background */
+}
+
+@media (prefers-color-scheme: dark) {
+  .results-page__table-content {
+    color: #f3f4f6; /* light color for dark mode */
+  }
 }
