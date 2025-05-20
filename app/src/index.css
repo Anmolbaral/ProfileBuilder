@@ -1285,6 +1285,6 @@ button:focus-visible {
 
 @media (prefers-color-scheme: dark) {
   .results-page__table-content {
-    color: #f3f4f6; /* light color for dark mode */
+    color: #1f2937; /* light color for dark mode */
   }
 }
