@@ -40,7 +40,7 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     chmod +x /app/start.sh
 
 # Expose port
-EXPOSE 4000
+EXPOSE 8080
 
 # Start the server
 CMD ["/app/start.sh"] 

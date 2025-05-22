@@ -1,13 +1,10 @@
 import { ApolloClient, InMemoryCache } from '@apollo/client';
 import { createUploadLink } from 'apollo-upload-client';
 
-//Commented the local host while using render
 // GraphQL URL from environment variables
-// const GRAPHQL_URL = 'http://localhost:4000/graphql';
-const GRAPHQL_URL = 'https://profilebuilder-uejc.onrender.com/graphql';
+const GRAPHQL_URL = 'https://pdf-extractor-server-xxxxx-uc.a.run.app/graphql';
 
-
-console.log('Using GraphQL URL:', GRAPHQL_URL); // Debug log
+console.log('Using GraphQL URL:', GRAPHQL_URL);
 
 const uploadLink = createUploadLink({
   uri: GRAPHQL_URL,
