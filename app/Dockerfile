@@ -11,8 +11,11 @@ RUN yarn build
 
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+
+# Install envsubst
+RUN apk add --no-cache gettext
 
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"] 
+CMD ["/bin/sh", "-c", "envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"] 
