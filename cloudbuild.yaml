@@ -27,10 +27,7 @@ steps:
       - '--allow-unauthenticated'
       - '--set-secrets'
       - 'OPENAI_API_KEY=openai-api-key:latest'
-      - '--port'
-      - '8080'
-      - '--set-env-vars'
-      - 'PORT=8080'
+
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
