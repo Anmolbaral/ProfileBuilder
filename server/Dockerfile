@@ -18,6 +18,9 @@ RUN npx prisma generate
 # Build TypeScript
 RUN npm run build
 
+# Copy schema to dist directory
+RUN cp src/schema.graphql dist/
+
 # Expose port
 EXPOSE 8080
 
