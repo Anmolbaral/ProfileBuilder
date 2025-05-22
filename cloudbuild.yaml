@@ -41,6 +41,8 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
 
 timeout: '1800s'
 
