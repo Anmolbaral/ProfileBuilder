@@ -5,13 +5,15 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/pdf-extractor-server']
 
-  # Build and push the frontend
+  # Build and push the frontend (only if not server-only)
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/pdf-extractor-frontend', '-f', './app/Dockerfile', './app']
+    when: '${_SERVER_ONLY} != "true"'
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/pdf-extractor-frontend']
+    when: '${_SERVER_ONLY} != "true"'
 
-  # Deploy to Cloud Run
+  # Deploy server to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -30,6 +32,7 @@ steps:
       - '--port'
       - '8080'
 
+  # Deploy frontend to Cloud Run (only if not server-only)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -45,6 +48,7 @@ steps:
       - '--allow-unauthenticated'
       - '--port'
       - '8080'
+    when: '${_SERVER_ONLY} != "true"'
 
 timeout: '1800s'
 
@@ -53,4 +57,7 @@ options:
 
 images:
   - 'gcr.io/$PROJECT_ID/pdf-extractor-server'
-  - 'gcr.io/$PROJECT_ID/pdf-extractor-frontend' 
+  - 'gcr.io/$PROJECT_ID/pdf-extractor-frontend'
+
+substitutions:
+  _SERVER_ONLY: 'false'  # Default value 

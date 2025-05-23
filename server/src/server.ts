@@ -203,10 +203,12 @@ async function start() {
     })
   );
 
-  const port = process.env.PORT || 8080;
-  app.listen(port, () =>
-    console.log(`🚀 Server ready at http://localhost:${port}/graphql`)
-  );
+  const port = parseInt(process.env.PORT || '8080', 10);
+  app.listen(port, '0.0.0.0', () => { // Explicitly listen on 0.0.0.0 for all interfaces
+    console.log(`INFO: pdf-extractor-server is attempting to listen on port ${port}`);
+    console.log(`🚀 Apollo Server (GraphQL) ready at http://0.0.0.0:${port}/graphql`);
+    console.log(`🩺 Health check available at http://0.0.0.0:${port}/`);
+  });
 }
 
 process.on('unhandledRejection', (reason) => {
