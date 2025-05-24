@@ -1,6 +1,8 @@
-FROM node:20-alpine as builder
+FROM node:20.11.1-alpine3.19-slim AS builder
 
 WORKDIR /app
+
+RUN apk update && apk upgrade --no-cache
 
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
@@ -9,7 +11,25 @@ RUN yarn add -D @types/node
 COPY . .
 RUN yarn build
 
-FROM nginx:alpine
+FROM nginx:1.25.4-alpine3.19 AS production
+RUN apk update && apk upgrade --no-cache
+
+LABEL maintainer="Anmol Baral"
+LABEL version="1.0.0"
+LABEL build-date="2025-05-23"
+LABEL org.opencontainers.image.revision="e30f4e8"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.architecture="amd64"
+LABEL org.opencontainers.image.source="https://github.com/Anmolbaral/ProfileBuilder"
+LABEL org.opencontainers.image.vendor="Anmol Baral"
+LABEL org.opencontainers.image.title="PDF Extractor Frontend"
+LABEL org.opencontainers.image.license="MIT"
+LABEL org.opencontainers.image.created="2025-05-23T15:47:34Z"
+LABEL org.opencontainers.image.documentation="https://github.com/Anmolbaral/ProfileBuilder#readme"
+LABEL org.opencontainers.image.url="https://github.com/Anmolbaral/ProfileBuilder"
+LABEL org.opencontainers.image.base.name="nginx:1.25.4-alpine3.19"
+LABEL org.opencontainers.image.base.digest="sha256:1234567890abcdef"
+LABEL description="PDF Extractor Frontend"
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 
