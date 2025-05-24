@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "homepage": "https://anmolbaral.github.io/ProfileBuilder/",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
