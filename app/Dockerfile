@@ -48,4 +48,4 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["/docker-entrypoint.sh"] 
+ENTRYPOINT ["/docker-entrypoint.sh"] 
