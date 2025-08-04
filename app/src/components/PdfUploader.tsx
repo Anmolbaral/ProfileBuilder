@@ -7,31 +7,36 @@ import { cn } from '@/lib/utils'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useNavigate } from 'react-router-dom'
 
-const UPLOAD_PDF = gql`
-  mutation UploadPdf($file: Upload!) {
-    uploadPdf(file: $file) {
-      id
-      filename
-      rawText
-      metadata
-      createdAt
+const UPDATE_RESUME = gql`
+  mutation UpdateResume($resume: Upload!, $jobDescription: String!) {
+    updateResume(resume: $resume, jobDescription: $jobDescription) {
+      downloadUrl
+      summary
+      changes
     }
   }
-`
+`;
 
 export function PdfUploader() {
   const [file, setFile] = useState<File | null>(null)
-  const [uploadPdf, { loading, error }] = useMutation(UPLOAD_PDF)
+  const [jobDescription, setJobDescription] = useState('')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [updateResume, { loading, error }] = useMutation(UPDATE_RESUME)
   const [isDragging, setIsDragging] = useState(false)
   const navigate = useNavigate()
 
   const handleUpload = async () => {
-    if (!file) return
+    setErrorMsg(null)
+    if (!file || !jobDescription.trim()) {
+      setErrorMsg('Please provide both a resume PDF and a job description.')
+      return
+    }
     try {
-      const result = await uploadPdf({ variables: { file } })
-      localStorage.setItem('pdfResults', JSON.stringify(result.data.uploadPdf))
+      const result = await updateResume({ variables: { resume: file, jobDescription } })
+      localStorage.setItem('updatedResumeResult', JSON.stringify(result.data.updateResume))
       navigate('/results')
     } catch (err) {
+      setErrorMsg('Upload error: ' + (err instanceof Error ? err.message : 'Unknown error'))
       console.error('Upload error:', err)
     }
   }
@@ -119,23 +124,41 @@ export function PdfUploader() {
                         <p className="pdf-uploader__file-name">
                           {file.name}
                         </p>
-                        <Button
-                          onClick={handleUpload}
-                          disabled={loading}
-                          className="bg-gradient-to-r from-green-600 via-green-500 to-green-400 hover:from-green-700 hover:via-green-600 hover:to-green-500 hover:scale-105 transition-transform"
-                        >
-                          {loading ? 'Uploading...' : 'Upload'}
-                        </Button>
                       </>
                     )}
                   </div>
-                  {file && (
+                  {/* Job Description Input */}
+                  <div className="w-full mt-6">
+                    <label htmlFor="job-description" className="block font-semibold mb-2">Paste Job Description</label>
+                    <textarea
+                      id="job-description"
+                      className="w-full p-3 border rounded-lg min-h-[120px] text-base"
+                      placeholder="Paste the job description or related info here..."
+                      value={jobDescription}
+                      onChange={e => setJobDescription(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                  {/* Generate Button */}
+                  <div className="w-full flex flex-col items-center mt-6 gap-2">
                     <Button
-                      onClick={() => setFile(null)}
-                      className="bg-gradient-to-r from-red-600 via-red-500 to-red-400 hover:from-red-700 hover:via-red-600 hover:to-red-500 hover:scale-105 transition-transform mt-4"
+                      onClick={handleUpload}
+                      disabled={loading || !file || !jobDescription.trim()}
+                      className="bg-gradient-to-r from-green-600 via-green-500 to-green-400 hover:from-green-700 hover:via-green-600 hover:to-green-500 hover:scale-105 transition-transform w-full"
                     >
-                      Remove File
+                      {loading ? 'Generating...' : 'Generate Updated Resume'}
                     </Button>
+                    {file && (
+                      <Button
+                        onClick={() => setFile(null)}
+                        className="bg-gradient-to-r from-red-600 via-red-500 to-red-400 hover:from-red-700 hover:via-red-600 hover:to-red-500 hover:scale-105 transition-transform mt-2 w-full"
+                      >
+                        Remove File
+                      </Button>
+                    )}
+                  </div>
+                  {errorMsg && (
+                    <div className="pdf-uploader__error">{errorMsg}</div>
                   )}
                   {error && (
                     <div className="pdf-uploader__error">{error.message}</div>

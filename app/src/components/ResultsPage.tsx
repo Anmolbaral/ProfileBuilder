@@ -27,15 +27,29 @@ interface SummaryData {
 }
 
 const ResultsPage: React.FC = () => {
-  // const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [doc, setDoc] = useState<any>(null);
+  const [updatedResume, setUpdatedResume] = useState<any>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Check for updated resume result first
+    const updated = localStorage.getItem('updatedResumeResult');
+    if (updated) {
+      try {
+        setUpdatedResume(JSON.parse(updated));
+        setLoading(false);
+        return;
+      } catch (e) {
+        setError('Failed to parse updated resume result.');
+        setLoading(false);
+        return;
+      }
+    }
+    // Fallback: fetch old results
     const fetchResults = async () => {
       try {
         const response = await fetch('https://profilebuilder-uejc.onrender.com/graphql', {
@@ -78,7 +92,6 @@ const ResultsPage: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchResults();
   }, []);
 
@@ -111,6 +124,140 @@ const ResultsPage: React.FC = () => {
           </Button>
         </Paper>
       </Container>
+    );
+  }
+
+  // Show updated resume result if available
+  if (updatedResume) {
+    // Log the structure for debugging
+    console.log('updatedResume:', updatedResume);
+    // Helper to render the updated resume JSON
+    const renderResumePreview = (resume: any) => {
+      if (!resume || Object.keys(resume).length === 0) return null;
+      // Try to find the resume object
+      const data = resume.updatedResumeJson || resume.resume || resume.updatedResume || resume;
+      if (!data || typeof data !== 'object' || Object.keys(data).length === 0) return null;
+      // If it looks like a resume, render it
+      if (data.professionalSummary || data.skills || data.experience || data.projects) {
+        return (
+          <div className="updated-resume-preview p-4 mb-6 bg-white rounded shadow">
+            {data.professionalSummary && (
+              <section className="mb-4">
+                <h2 className="font-bold text-lg mb-1">Professional Summary</h2>
+                <p>{data.professionalSummary}</p>
+              </section>
+            )}
+            {data.skills && Array.isArray(data.skills) && data.skills.length > 0 && (
+              <section className="mb-4">
+                <h2 className="font-bold text-lg mb-1">Skills</h2>
+                <ul className="list-disc list-inside">
+                  {data.skills.map((skill: string, idx: number) => (
+                    <li key={idx}>{skill}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {data.experience && Array.isArray(data.experience) && data.experience.length > 0 && (
+              <section className="mb-4">
+                <h2 className="font-bold text-lg mb-1">Experience</h2>
+                {data.experience.map((role: any, idx: number) => (
+                  <div key={idx} className="mb-2">
+                    <div className="font-semibold">{role.title} {role.company && `@ ${role.company}`}</div>
+                    {role.dates && <div className="text-sm text-gray-500">{role.dates}</div>}
+                    {role.bullets && Array.isArray(role.bullets) && (
+                      <ul className="list-disc list-inside ml-4">
+                        {role.bullets.map((bullet: string, bidx: number) => (
+                          <li key={bidx}>{bullet}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </section>
+            )}
+            {data.projects && Array.isArray(data.projects) && data.projects.length > 0 && (
+              <section className="mb-4">
+                <h2 className="font-bold text-lg mb-1">Projects</h2>
+                {data.projects.map((project: any, idx: number) => (
+                  <div key={idx} className="mb-2">
+                    <div className="font-semibold">{project.name}</div>
+                    {project.description && <div>{project.description}</div>}
+                    {project.technologies && Array.isArray(project.technologies) && (
+                      <div className="text-sm text-gray-500">Tech: {project.technologies.join(', ')}</div>
+                    )}
+                  </div>
+                ))}
+              </section>
+            )}
+          </div>
+        );
+      }
+      // Fallback: show raw JSON
+      return <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">{JSON.stringify(data, null, 2)}</pre>;
+    };
+    return (
+      <div className="results-page">
+        <nav className="results-page__nav">
+          <div className="results-page__nav-content">
+            <Link to="/">
+              <h1 className="results-page__title">PDF Parser</h1>
+            </Link>
+          </div>
+        </nav>
+        <main className="results-page__main">
+          <div className="results-page__content" ref={resultsRef}>
+            <div className="results-page__container">
+              <div className="results-page__spacer"></div>
+              <div className="results-page__grid">
+                {/* Render the resume preview if available */}
+                {renderResumePreview(updatedResume)}
+                <Card className="results-page__card">
+                  <CardHeader className="results-page__card-header">
+                    <CardTitle className="results-page__card-title">Updated Resume</CardTitle>
+                  </CardHeader>
+                  <CardContent className="results-page__card-content">
+                    {updatedResume.downloadUrl ? (
+                      <a
+                        href={updatedResume.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                        download
+                      >
+                        Download Updated Resume
+                      </a>
+                    ) : (
+                      <Typography color="error">No download link available.</Typography>
+                    )}
+                  </CardContent>
+                </Card>
+                {updatedResume.summary && (
+                  <Card className="results-page__card">
+                    <CardHeader className="results-page__card-header">
+                      <CardTitle className="results-page__card-title">Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent className="results-page__card-content">
+                      <Typography>{updatedResume.summary}</Typography>
+                    </CardContent>
+                  </Card>
+                )}
+                {updatedResume.changes && Object.keys(updatedResume.changes).length > 0 && (
+                  <Card className="results-page__card">
+                    <CardHeader className="results-page__card-header">
+                      <CardTitle className="results-page__card-title">Changes</CardTitle>
+                    </CardHeader>
+                    <CardContent className="results-page__card-content">
+                      <pre className="whitespace-pre-wrap text-sm bg-gray-100 p-2 rounded">
+                        {JSON.stringify(updatedResume.changes, null, 2)}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
     );
   }
 

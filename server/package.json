@@ -28,6 +28,7 @@
     "pdf-lib": "^1.17.1",
     "pdf-parse": "1.1.1",
     "pdfjs-dist": "^5.2.133",
+    "pdfkit": "^0.17.1",
     "prisma": "^6.8.1"
   },
   "devDependencies": {
