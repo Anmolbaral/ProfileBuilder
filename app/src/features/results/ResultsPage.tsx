@@ -239,7 +239,7 @@ const ResultsPage: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardContent className="text-center p-6">
-            <p className="body-text text-red-600 mb-4">Error: {error}</p>
+            <p className="body-text text-black mb-4">Error: {error}</p>
             <Button onClick={handleBack} className="mt-4">
               ← Back to Upload
             </Button>
@@ -329,9 +329,11 @@ const ResultsPage: React.FC = () => {
 
     return (
       <div className="results-page">
-        <nav className="pdf-uploader__nav">
-          <div className="pdf-uploader__nav-content">
-            <Link to="/" className="pdf-uploader__title">PDF Resume Analyzer</Link>
+        <nav className="results-page__nav">
+          <div className="results-page__nav-content">
+            <Link to="/">
+              <h1 className="results-page__title">AI Resume Personalizer</h1>
+            </Link>
           </div>
         </nav>
 
@@ -355,16 +357,17 @@ const ResultsPage: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    {updatedResume.downloadUrl && (
+                  <div className="flex flex-col sm:flex-row gap-8 mt-8 justify-center items-center">
+                    {updatedResume?.downloadUrl && (
                       <a
                         href={updatedResume.downloadUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+                        className="inline-flex items-center justify-center px-10 py-5 bg-blue-700 text-white rounded-xl hover:bg-blue-800 transition-all duration-300 font-bold shadow-xl hover:shadow-2xl text-center min-w-[320px] transform hover:scale-105 border-2 border-blue-600"
                         download
                       >
-                        📥 Download Your Optimized Resume
+                        <span className="mr-3 text-2xl">📥</span>
+                        Download Your Optimized Resume
                       </a>
                     )}
                   </div>

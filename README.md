@@ -70,6 +70,49 @@ The application is deployed using:
 - Backend: Render.com for the Node.js server
 - Database: Render.com PostgreSQL service until Google Cloud work is complete
 
+## Challenges & Solutions
+
+### Challenge: Slow updated resume generation
+- Users experienced delays when generating the optimized resume after uploading a PDF and job description.
+- This felt like the app was stuck or unreliable, especially on weaker networks or when the server was cold-starting.
+
+### Why it happened
+- Large PDF files and AI calls take time to process.
+- Network issues (CORS/CSRF/timeout) caused retries or failures.
+- No caching meant we re-fetched and re-rendered even when results were already available.
+- UI didn’t clearly communicate progress, so even normal processing felt “slow”.
+
+### What we did (simple, effective fixes)
+1. Faster networking and fewer failures
+   - Disabled CSRF for file uploads (server) and simplified headers to remove unnecessary checks.
+   - Added CORS correctly and used `apollo-upload-client` with a direct GraphQL upload link.
+   - Used `fetchOptions: { mode: 'cors', credentials: 'omit' }` to avoid credential noise.
+
+2. Clear progress and cancel/retry
+   - Added a real-time progress state with stages: uploading → processing → finalizing.
+   - Visual progress bar + percent + ETA so users know it’s working.
+   - Added “Retry” and “Cancel” so users can recover without reloading.
+
+3. Smart caching to skip repeat work
+   - Stored final analysis (`resumeAnalysisResult`) in `localStorage`.
+   - Results page first checks cache and renders instantly if available.
+   - Only fetch if cache is missing or invalid.
+
+4. Health checks and offline handling
+   - Added “Test Server Connection” button and a health check endpoint.
+   - Monitored online/offline state and displayed helpful messages.
+
+5. UI performance and responsiveness
+   - Used React `lazy` and `Suspense` to load heavy components on demand.
+   - Memoized static data (mock data, lists) to avoid unnecessary re-renders.
+   - Reduced initial render work and improved perceived speed.
+
+### The result
+- Much faster perceived performance (user sees results quickly from cache).
+- Fewer failed uploads and clearer recovery options.
+- Transparent progress and better user control.
+- Overall: snappier, more reliable experience, even on slower networks.
+
 
 
 

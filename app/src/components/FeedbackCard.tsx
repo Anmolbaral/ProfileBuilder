@@ -1,4 +1,5 @@
 // Removed unused Card imports as we now use custom responsive divs
+import { KeywordTag } from '@/features/results/components/KeywordHub';
 
 interface FeedbackProps {
   feedback: {
@@ -29,11 +30,11 @@ export default function FeedbackCard({ feedback }: FeedbackProps) {
             <h3 className="text-card-title">✅ Your Strengths</h3>
           </div>
           <div className="card-content-responsive">
-            <ul className="space-y-3">
+            <ul className="flex flex-col gap-5">
               {feedback.strengths.map((strength, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="mr-3 text-blue-800 text-lg leading-7">•</span>
-                  <span className="text-body text-blue-900 flex-1">{strength}</span>
+                <li key={index} className="flex items-start p-3 rounded-lg bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors">
+                  <span className="mr-4 text-black text-lg leading-7 font-bold flex-shrink-0">✓</span>
+                  <span className="text-body text-black flex-1 leading-7">{strength}</span>
                 </li>
               ))}
             </ul>
@@ -48,22 +49,28 @@ export default function FeedbackCard({ feedback }: FeedbackProps) {
             <h3 className="text-card-title">🔧 Areas for Improvement</h3>
           </div>
           <div className="card-content-responsive">
-            <div className="improvement-items-container">
+            <div className="improvement-items-container space-y-10">
               {feedback.improvements.map((improvement, index) => (
-                <div key={index} className="border-l-4 border-amber-400 pl-6 py-2">
-                  <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <h4 className="text-section-label text-amber-900">{improvement.section}</h4>
-                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                      improvement.priority === 'high' ? 'bg-red-100 text-red-800' :
-                      improvement.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
+                <div key={index} className="border-l-4 border-amber-500 pl-10 py-8 mb-8 bg-amber-50 rounded-r-lg shadow-sm hover:shadow-md transition-shadow mx-2">
+                  <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                    <h4 className="text-section-label text-black font-semibold mr-4">{improvement.section}</h4>
+                    <span className={`inline-flex items-center rounded-full px-6 py-3 text-sm font-bold shadow-md border-2 ${
+                      improvement.priority === 'high' ? 'bg-red-200 text-red-950 border-red-600 hover:bg-red-300' :
+                      improvement.priority === 'medium' ? 'bg-yellow-200 text-yellow-950 border-yellow-600 hover:bg-yellow-300' :
+                      'bg-blue-200 text-blue-950 border-blue-600 hover:bg-blue-300'
+                    } transition-colors cursor-default`}>
                       {improvement.priority} priority
                     </span>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-body text-amber-800"><strong>Issue:</strong> {improvement.issue}</p>
-                    <p className="text-body text-amber-800"><strong>Suggestion:</strong> {improvement.suggestion}</p>
+                  <div className="space-y-6">
+                    <div className="p-5 bg-white rounded-lg border-2 border-amber-200 shadow-sm mx-2">
+                      <p className="text-body text-black leading-relaxed"><strong className="text-red-800 text-lg">Issue:</strong></p>
+                      <p className="text-body text-black leading-relaxed mt-3">{improvement.issue}</p>
+                    </div>
+                    <div className="p-5 bg-white rounded-lg border-2 border-amber-200 shadow-sm mx-2">
+                      <p className="text-body text-black leading-relaxed"><strong className="text-green-800 text-lg">Suggestion:</strong></p>
+                      <p className="text-body text-black leading-relaxed mt-3">{improvement.suggestion}</p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -79,12 +86,10 @@ export default function FeedbackCard({ feedback }: FeedbackProps) {
             <h3 className="text-card-title">🔍 Missing Keywords</h3>
           </div>
           <div className="card-content-responsive">
-            <p className="mb-4 text-body text-purple-800">Consider adding these keywords to improve your resume's ATS score:</p>
-            <div className="flex flex-wrap gap-3">
+            <p className="mb-6 text-body text-black">Consider adding these keywords to improve your resume's ATS score:</p>
+            <div className="missing-keyword-tags flex flex-wrap gap-5 sm:gap-6 p-2">
               {feedback.missingKeywords.map((keyword, index) => (
-                <span key={index} className="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-sm font-medium text-purple-800">
-                  {keyword}
-                </span>
+                <KeywordTag key={index} keyword={keyword} isMissing={true} />
               ))}
             </div>
           </div>
@@ -110,11 +115,11 @@ export default function FeedbackCard({ feedback }: FeedbackProps) {
             <h3 className="text-card-title">💡 Actionable Recommendations</h3>
           </div>
           <div className="card-content-responsive">
-            <ul className="space-y-3">
+            <ul className="flex flex-col gap-5">
               {feedback.recommendations.map((recommendation, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="mr-3 text-indigo-800 text-lg leading-7">→</span>
-                  <span className="text-body text-indigo-900 flex-1">{recommendation}</span>
+                <li key={index} className="flex items-start p-5 rounded-lg bg-indigo-100 border-2 border-indigo-300 hover:bg-indigo-200 transition-colors shadow-md">
+                  <span className="mr-5 text-black text-xl leading-7 font-bold flex-shrink-0">💡</span>
+                  <span className="text-body text-black flex-1 leading-7 font-medium">{recommendation}</span>
                 </li>
               ))}
             </ul>

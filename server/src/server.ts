@@ -406,9 +406,16 @@ const resolvers = {
             throw new Error('Could not extract text from the provided resume PDF.');
         }
         
-        // Prepare truncated inputs once
-        const truncatedResume = resumeText.slice(0, 5000);
-        const truncatedJobDesc = jobDescription.slice(0, 3000);
+        // Prepare truncated inputs once to reduce memory usage
+        const truncatedResume = resumeText.slice(0, 2000); // Reduced from 5000
+        const truncatedJobDesc = jobDescription.slice(0, 1500); // Reduced from 3000
+        
+        console.log('📝 Processing with truncated inputs:', {
+          originalResumeLength: resumeText.length,
+          truncatedResumeLength: truncatedResume.length,
+          originalJobDescLength: jobDescription.length,
+          truncatedJobDescLength: truncatedJobDesc.length
+        });
 
         // Kick off both calls in parallel to reduce total latency
         const originalResumePromise = extractStructuredInfo(resumeText);
@@ -435,6 +442,7 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
 `;
 
         // Use truncated values in the OpenAI prompt
+        console.log('🤖 Starting OpenAI API call...');
         const aiUpdatePromise = openai.chat.completions.create({
           model: "gpt-3.5-turbo", // Switched to gpt-3.5-turbo for faster response
           messages: [
@@ -442,7 +450,8 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
             { role: "user", content: `[USER_RESUME_JSON]:\n${JSON.stringify({rawContent: truncatedResume}, null, 2)}\n\n[JOB_DESCRIPTION_TEXT]:\n${truncatedJobDesc}` }
           ],
           response_format: { type: "json_object" },
-          max_tokens: 1024 // Limit output for speed
+          max_tokens: 800, // Reduced from 1024 to limit memory usage
+          temperature: 0.7 // Add some creativity while keeping responses focused
         });
         
         const [originalResumeJson, aiUpdate] = await Promise.all([
@@ -450,12 +459,37 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
           aiUpdatePromise,
         ]);
 
+        console.log('✅ OpenAI API call completed');
+        
         const rawAI = aiUpdate.choices[0].message.content || '{}';
-        if (rawAI.length > 1000000) { // 1MB
+        console.log('📊 AI Response size:', {
+          length: rawAI.length,
+          preview: rawAI.substring(0, 200)
+        });
+        
+        if (rawAI.length > 500000) { // Reduced from 1MB to 500KB
           throw new Error('AI response too large to process.');
         }
+        
         const aiResult = JSON.parse(rawAI);
         const changeLog = aiResult.StrategicDebrief || 'No changes logged by AI.';
+        
+        // Clean up large variables to free memory
+        // aiUpdate = null; // Let garbage collection handle it
+        
+        // Force garbage collection if available
+        if (global.gc) {
+          global.gc();
+          console.log('🧹 Garbage collection triggered');
+        }
+        
+        // Log memory usage
+        const memUsage = process.memoryUsage();
+        console.log('📊 Memory usage:', {
+          heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+          heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+          rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`
+        });
         
         // **STEP 3: Merge original data with AI-updated sections**
         const finalResumeJson = {
@@ -628,6 +662,16 @@ async function start() {
     maxFileSize: 10_000_000,
     maxFiles: 1
   }));
+  
+  // Add JSON middleware for regular GraphQL queries (but not for file uploads)
+  app.use('/graphql', (req, res, next) => {
+    // Only apply JSON parsing for non-multipart requests
+    if (!req.get('content-type')?.includes('multipart/form-data')) {
+      express.json({ limit: '50mb' })(req, res, next);
+    } else {
+      next();
+    }
+  });
 
   // Add request logging middleware before GraphQL
   app.use('/graphql', (req, res, next) => {

@@ -542,9 +542,9 @@ export function PdfUploader() {
   return (
     <Tooltip.Provider>
       <div className="pdf-uploader">
-        <nav className="pdf-uploader__nav">
-          <div className="pdf-uploader__nav-content">
-            <h1 className="pdf-uploader__title">PDF Resume Analyzer</h1>
+        <nav className="results-page__nav">
+          <div className="results-page__nav-content">
+            <h1 className="results-page__title">AI Resume Personalizer</h1>
           </div>
         </nav>
 

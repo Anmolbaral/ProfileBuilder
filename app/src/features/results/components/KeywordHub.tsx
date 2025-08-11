@@ -5,8 +5,10 @@ export function KeywordTag({ keyword, isMissing = false }: { keyword: string; is
   return (
     <div
       className={cn(
-        'keyword-tag-base',
-        isMissing ? 'keyword-tag-missing-light' : 'keyword-tag-found-light'
+        'inline-flex items-center rounded-full font-inter text-sm font-bold px-5 py-3 border-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 mx-2 my-1.5',
+        isMissing 
+          ? 'bg-orange-200 text-orange-950 border-orange-500 hover:bg-orange-300' 
+          : 'bg-green-200 text-green-950 border-green-500 hover:bg-green-300'
       )}
     >
       {keyword}
@@ -22,36 +24,36 @@ export function KeywordHub({ missing = [], found = [] }: { missing?: string[]; f
         <h3 className="text-card-title">🎯 Keywords Analysis</h3>
       </div>
       <div className="card-content-responsive">
-        <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        <div className="mb-8 flex flex-col sm:flex-row gap-4">
           <button
             className={cn(
-              'rounded-lg px-4 py-3 border transition-all duration-200 text-body font-medium',
+              'rounded-lg px-6 py-4 border-2 transition-all duration-200 font-semibold min-w-[160px] mb-3 sm:mb-0 shadow-md hover:shadow-lg transform hover:scale-105',
               tab === 'missing' 
-                ? 'bg-amber-50 border-amber-300 text-amber-800 shadow-sm' 
-                : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600 hover:border-gray-300'
+                ? 'bg-amber-100 border-amber-400 text-black hover:bg-amber-200' 
+                : 'bg-white border-gray-300 hover:bg-gray-100 text-black hover:border-gray-400'
             )}
             onClick={() => setTab('missing')}
           >
-            <span className="text-body">Missing Keywords ({missing.length})</span>
+            Missing Keywords ({missing.length})
           </button>
           <button
             className={cn(
-              'rounded-lg px-4 py-3 border transition-all duration-200 text-body font-medium',
+              'rounded-lg px-6 py-4 border-2 transition-all duration-200 font-semibold min-w-[160px] shadow-md hover:shadow-lg transform hover:scale-105',
               tab === 'found' 
-                ? 'bg-green-50 border-green-300 text-green-800 shadow-sm' 
-                : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600 hover:border-gray-300'
+                ? 'bg-green-100 border-green-400 text-black hover:bg-green-200' 
+                : 'bg-white border-gray-300 hover:bg-gray-100 text-black hover:border-gray-400'
             )}
             onClick={() => setTab('found')}
           >
-            <span className="text-body">Keywords Found ({found.length})</span>
+            Keywords Found ({found.length})
           </button>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="keyword-tags flex flex-wrap gap-6 p-3 sm:p-4">
           {(tab === 'missing' ? missing : found).map((kw) => (
             <KeywordTag key={kw} keyword={kw} isMissing={tab === 'missing'} />
           ))}
           {(tab === 'missing' ? missing : found).length === 0 && (
-            <p className="text-muted text-gray-500 italic">
+            <p className="text-black italic">
               {tab === 'missing' ? 'No missing keywords found.' : 'No keywords found yet.'}
             </p>
           )}

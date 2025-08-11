@@ -34,12 +34,10 @@ export function ScoreGauge({ score }: { score: number }) {
           </div>
           <div className="text-center md:text-left space-y-3">
             <div className="text-section-label">Overall Match Score</div>
-            <div className={`text-body font-semibold text-lg ${
-              clamped >= 85 ? 'text-green-700' : clamped >= 70 ? 'text-blue-700' : 'text-amber-700'
-            }`}>
+            <div className="text-body font-semibold text-lg text-black">
               {clamped >= 85 ? 'Strong Match' : clamped >= 70 ? 'Good Match' : 'Needs Improvement'}
             </div>
-            <div className="text-muted text-gray-500 max-w-xs">
+            <div className="text-black max-w-xs">
               {clamped >= 85 ? 'Your resume aligns excellently with the job requirements.' :
                clamped >= 70 ? 'Your resume shows good alignment with most job requirements.' :
                'Consider incorporating more relevant keywords and skills.'}
