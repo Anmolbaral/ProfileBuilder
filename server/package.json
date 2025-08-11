@@ -1,0 +1,45 @@
+{
+  "type": "module",
+  "name": "server",
+  "version": "1.0.0",
+  "main": "dist/server.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node --experimental-specifier-resolution=node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@apollo/server": "^4.12.1",
+    "@google-cloud/storage": "^7.16.0",
+    "@prisma/client": "^6.8.1",
+    "@types/pdfjs-dist": "^2.10.378",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "graphql": "^16.11.0",
+    "graphql-upload": "^17.0.0",
+    "graphql-upload-minimal": "^1.6.1",
+    "openai": "^4.100.0",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "1.1.1",
+    "pdfjs-dist": "^5.2.133",
+    "pdfkit": "^0.17.1",
+    "prisma": "^6.8.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.18",
+    "@types/express": "^4.17.21",
+    "@types/express-serve-static-core": "^4.19.6",
+    "@types/graphql-upload": "^17.0.0",
+    "@types/node": "^22.15.18",
+    "@types/pdf-parse": "^1.1.5",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

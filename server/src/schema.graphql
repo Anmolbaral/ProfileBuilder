@@ -1,0 +1,26 @@
+scalar DateTime
+scalar JSON
+scalar Upload
+type ExtractedDocument {
+  id: ID!
+  filename: String!
+  rawText: String!
+  metadata: JSON!
+  createdAt: DateTime!
+}
+
+type Query {
+  documents: [ExtractedDocument!]!
+}
+
+type UpdatedResumeResult {
+  downloadUrl: String!
+  summary: String
+  changes: JSON
+  updatedResumeJson: JSON
+}
+
+type Mutation {
+  uploadPdf(file: Upload!): ExtractedDocument!
+  updateResume(resume: Upload!, jobDescription: String!): UpdatedResumeResult!
+}

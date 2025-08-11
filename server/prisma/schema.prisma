@@ -1,0 +1,17 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ExtractedDocument {
+  id        String   @id @default(uuid())
+  filename  String
+  rawText   String
+  metadata  String   // Changed from Json to String for SQLite compatibility
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
