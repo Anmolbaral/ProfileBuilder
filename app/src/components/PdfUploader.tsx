@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useNavigate } from 'react-router-dom'
 
+
+
 const UPDATE_RESUME = gql`
   mutation UpdateResume($resume: Upload!, $jobDescription: String!) {
     updateResume(resume: $resume, jobDescription: $jobDescription) {
@@ -19,7 +21,7 @@ const UPDATE_RESUME = gql`
 `;
 
 interface UploadProgress {
-  stage: 'idle' | 'uploading' | 'processing' | 'generating' | 'completing' | 'done' | 'error';
+  stage: 'idle' | 'uploading' | 'pfirrocessing' | 'generating' | 'completing' | 'done' | 'error';
   progress: number;
   message: string;
   estimatedTime?: number;

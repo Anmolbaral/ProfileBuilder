@@ -1,26 +1,28 @@
 # PDF Extractor
 
-A web application that extracts and analyzes content from PDF files using AI. The application provides structured summaries, metadata extraction, and raw text content from uploaded PDFs.
+A web application that extracts and analyzes resume content with AI, and suggests targeted edits to personalize your resume for a specific job description.
 
 ## Live Demo
 
-The application is hosted and can be accessed at: [https://anmolbaral.github.io/ProfileBuilder/results](https://anmolbaral.github.io/ProfileBuilder/results)
+The application is hosted at: [https://resumepersonalizer.web.app](https://resumepersonalizer.web.app)
 
 ## Tech Stack
 
-- **Frontend**: React with TypeScript
-- **Backend**: Node.js with Express
-- **Database**: PostgreSQL
+- **Frontend**: React (TypeScript), Vite
+- **Styling/UI**: Tailwind CSS, Radix UI, shadcn/ui, MUI (select components)
+- **Client Data**: Apollo Client (GraphQL), `apollo-upload-client` for file uploads
+- **Backend**: Node.js (Express) + Apollo Server (GraphQL)
+- **Database**: PostgreSQL (via Prisma)
 - **AI Integration**: OpenAI API
-- **PDF Processing**: pdfjs-dist
-- **Deployment**: 
-  - Frontend: GitHub Pages
-  - Backend: Render.com
-  - Database: Render.com PostgreSQL
+- **PDF Processing**: pdf-parse, pdf-lib, pdfkit
+- **Deployment**:
+  - Frontend: Firebase Hosting (SPA rewrites enabled)
+  - Backend: Render.com (Cloud Run migration planned)
+  - Database: PostgreSQL on Render.com (Cloud SQL migration planned)
 
 ## Features
 
-- PDF file upload and processing
+- PDF file and job description upload and processing
 - AI-powered content analysis
 - Structured summary generation
 - Metadata extraction
@@ -60,15 +62,42 @@ npm run dev
 
 # Start the frontend development server
 cd ../app
-npm start
+npm run dev
 ```
 
 ## Deployment
 
-The application is deployed using:
-- Frontend: GitHub Pages for static hosting
-- Backend: Render.com for the Node.js server
-- Database: Render.com PostgreSQL service until Google Cloud work is complete
+### Frontend (Firebase Hosting)
+
+1) Build with a root base path and your API URL:
+```bash
+cd app
+VITE_API_URL="https://<your-backend-domain>/graphql" npm run build -- --base=/
+```
+
+2) Initialize Firebase Hosting (one-time, at repo root):
+```bash
+cd ..
+firebase init hosting
+# public directory: app/dist
+# single-page app rewrite: Yes
+```
+
+3) Deploy:
+```bash
+firebase deploy --only hosting
+```
+
+Notes:
+- Router uses `basename={import.meta.env.BASE_URL}` so it works on both GitHub Pages and Firebase. For Firebase builds we pass `--base=/`.
+- Ensure your backend CORS allows `https://<project>.web.app` and `https://<project>.firebaseapp.com`.
+
+### Backend (current)
+- Hosted on Render.com at `https://profilebuilder-uejc.onrender.com`.
+- Exposes `/graphql`, `/health`, and serves generated PDFs from `/downloads`.
+
+### Planned (Google Cloud)
+- Backend to Cloud Run, PDFs to Cloud Storage (public or signed URLs), DB to Cloud SQL. Build-time client `VITE_API_URL` will point to the Cloud Run `/graphql` URL.
 
 ## Challenges & Solutions
 
