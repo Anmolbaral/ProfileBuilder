@@ -515,7 +515,7 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
 
         const port = parseInt(process.env.PORT || '8080', 10);
         const baseUrl = process.env.NODE_ENV === 'production' 
-          ? 'https://profilebuilder-backend-851729026826.us-central1.run.app'
+          ? 'https://profilebuilder-backend-xx3otar6ca-uc.a.run.app'
           : `http://localhost:${port}`;
         const downloadUrl = `${baseUrl}/downloads/${pdfFilename}`;
 
