@@ -17,8 +17,10 @@ The application is hosted at: [https://resumepersonalizer.web.app](https://resum
 - **PDF Processing**: pdf-parse, pdf-lib, pdfkit
 - **Deployment**:
   - Frontend: Firebase Hosting (SPA rewrites enabled)
-  - Backend: Render.com (Cloud Run migration planned)
-  - Database: PostgreSQL on Render.com (Cloud SQL migration planned)
+  - Backend: Google Cloud Run (containerized)
+  - Database: Google Cloud SQL (PostgreSQL)
+  - File Storage: Google Cloud Storage
+  - CI/CD: Google Cloud Build
 
 ## Features
 
@@ -69,35 +71,30 @@ npm run dev
 
 ### Frontend (Firebase Hosting)
 
-1) Build with a root base path and your API URL:
+1) Build with production API URL:
 ```bash
 cd app
-VITE_API_URL="https://<your-backend-domain>/graphql" npm run build -- --base=/
+VITE_API_URL="https://profilebuilder-backend-851729026826.us-central1.run.app/graphql" npm run build
 ```
 
-2) Initialize Firebase Hosting (one-time, at repo root):
-```bash
-cd ..
-firebase init hosting
-# public directory: app/dist
-# single-page app rewrite: Yes
-```
-
-3) Deploy:
+2) Deploy:
 ```bash
 firebase deploy --only hosting
 ```
 
-Notes:
-- Router uses `basename={import.meta.env.BASE_URL}` so it works on both GitHub Pages and Firebase. For Firebase builds we pass `--base=/`.
-- Ensure your backend CORS allows `https://<project>.web.app` and `https://<project>.firebaseapp.com`.
+### Backend (Google Cloud Run)
+- Hosted on Google Cloud Run at `https://profilebuilder-backend-851729026826.us-central1.run.app`
+- Exposes `/graphql`, `/health`, and serves generated PDFs from Google Cloud Storage
+- Auto-scaling containerized service with Cloud SQL database connection
+- Automatically deployed via Cloud Build on GitHub push
+- Uses `cloudbuild.yaml` for CI/CD pipeline
 
-### Backend (current)
-- Hosted on Render.com at `https://profilebuilder-uejc.onrender.com`.
-- Exposes `/graphql`, `/health`, and serves generated PDFs from `/downloads`.
-
-### Planned (Google Cloud)
-- Backend to Cloud Run, PDFs to Cloud Storage (public or signed URLs), DB to Cloud SQL. Build-time client `VITE_API_URL` will point to the Cloud Run `/graphql` URL.
+### Infrastructure (Google Cloud)
+- **Cloud Run**: Containerized backend service with auto-scaling
+- **Cloud SQL**: Managed PostgreSQL database
+- **Cloud Storage**: File storage for PDFs and generated documents
+- **Cloud Build**: Automated CI/CD pipeline triggered by GitHub pushes
+- **Secret Manager**: Secure storage for API keys and sensitive data
 
 ## Challenges & Solutions
 

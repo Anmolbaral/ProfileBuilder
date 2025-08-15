@@ -233,7 +233,7 @@ export function PdfUploader() {
         
         if (csrfTestText.includes('Cross-Site Request Forgery')) {
           console.error('❌ CSRF protection is still enabled on server!')
-          setErrorMsg('Server needs to be updated with CSRF protection disabled. Please deploy the latest server changes.')
+          setErrorMsg('Server configuration issue detected. Please contact support.')
       return
         } else {
           console.log('✅ CSRF protection appears to be disabled')

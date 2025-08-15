@@ -515,7 +515,7 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
 
         const port = parseInt(process.env.PORT || '8080', 10);
         const baseUrl = process.env.NODE_ENV === 'production' 
-          ? 'https://profilebuilder-uejc.onrender.com'
+          ? 'https://profilebuilder-backend-851729026826.us-central1.run.app'
           : `http://localhost:${port}`;
         const downloadUrl = `${baseUrl}/downloads/${pdfFilename}`;
 
@@ -597,7 +597,6 @@ async function start() {
   const allowedOrigins = [
     'http://localhost:5173',
     'https://studio.apollographql.com',
-    'https://anmolbaral.github.io',
     'https://resumepersonalizer.web.app',
     'https://resumepersonalizer.firebaseapp.com',
     process.env.FRONTEND_URL
