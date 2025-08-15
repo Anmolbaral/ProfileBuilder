@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/loader';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { GRAPHQL_URL } from '@/apollo';
 
 // Lazy load heavy components for better initial page load
 const FeedbackCard = lazy(() => import('@/components/FeedbackCard'));
@@ -180,7 +181,7 @@ const ResultsPage: React.FC = () => {
 
     const fetchResults = async () => {
       try {
-        const response = await fetch('https://profilebuilder-uejc.onrender.com/graphql', {
+        const response = await fetch(GRAPHQL_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

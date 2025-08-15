@@ -1,8 +1,11 @@
 import { ApolloClient, InMemoryCache } from '@apollo/client';
 import { createUploadLink } from 'apollo-upload-client';
 
-// GraphQL URL - Use local server for development
-const GRAPHQL_URL = 'http://localhost:4000/graphql';
+// GraphQL endpoint selection for dev/local vs production (Google Cloud)
+const PROD_GRAPHQL_URL = import.meta.env.VITE_API_URL;
+const DEV_GRAPHQL_URL = 'http://localhost:4000/graphql';
+
+export const GRAPHQL_URL = PROD_GRAPHQL_URL || DEV_GRAPHQL_URL;
 
 // Upload link for file uploads (CSRF protection disabled on server)
 const uploadLink = createUploadLink({

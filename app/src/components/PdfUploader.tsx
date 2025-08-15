@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useNavigate } from 'react-router-dom'
+import { GRAPHQL_URL } from '@/apollo'
 
 
 
@@ -21,7 +22,7 @@ const UPDATE_RESUME = gql`
 `;
 
 interface UploadProgress {
-  stage: 'idle' | 'uploading' | 'pfirrocessing' | 'generating' | 'completing' | 'done' | 'error';
+  stage: 'idle' | 'uploading' | 'processing' | 'generating' | 'completing' | 'done' | 'error';
   progress: number;
   message: string;
   estimatedTime?: number;
@@ -69,7 +70,7 @@ export function PdfUploader() {
     console.log('🔍 Starting server health check...')
     try {
       console.log('📡 Making request to GraphQL endpoint...')
-      const response = await fetch('http://localhost:4000/graphql', {
+      const response = await fetch(GRAPHQL_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +179,7 @@ export function PdfUploader() {
       // Additional test: Check if GraphQL endpoint is responding
       console.log('🔍 Testing GraphQL endpoint specifically...')
       try {
-        const testQuery = await fetch('http://localhost:4000/graphql', {
+        const testQuery = await fetch(GRAPHQL_URL, {
         method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -215,7 +216,7 @@ export function PdfUploader() {
           variables: {}
         }))
         
-        const csrfTest = await fetch('http://localhost:4000/graphql', {
+        const csrfTest = await fetch(GRAPHQL_URL, {
           method: 'POST',
           body: csrfTestData,
           mode: 'cors'
@@ -360,7 +361,7 @@ export function PdfUploader() {
           valueSize: value instanceof File ? value.size : value.length
         })));
 
-        const directResult = await fetch('http://localhost:4000/graphql', {
+        const directResult = await fetch(GRAPHQL_URL, {
           method: 'POST',
           body: formData,
           mode: 'cors',

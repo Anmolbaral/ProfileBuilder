@@ -5,6 +5,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Link } from 'react-router-dom';
+import { GRAPHQL_URL } from '@/apollo';
 
 interface SummaryData {
   pageCount: number;
@@ -52,7 +53,7 @@ const ResultsPage: React.FC = () => {
     // Fallback: fetch old results
     const fetchResults = async () => {
       try {
-        const response = await fetch('https://profilebuilder-uejc.onrender.com/graphql', {
+        const response = await fetch(GRAPHQL_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
