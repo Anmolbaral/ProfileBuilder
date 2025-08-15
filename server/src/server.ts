@@ -598,6 +598,8 @@ async function start() {
     'http://localhost:5173',
     'https://studio.apollographql.com',
     'https://anmolbaral.github.io',
+    'https://resumepersonalizer.web.app',
+    'https://resumepersonalizer.firebaseapp.com',
     process.env.FRONTEND_URL
   ].filter(Boolean) as string[];
 
