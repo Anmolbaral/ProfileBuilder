@@ -398,8 +398,8 @@ const resolvers = {
         }
         
         const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default as any;
-        // Limit number of pages parsed for speed; parse text is later truncated anyway
-        const pdfData = await pdfParse(buffer, { max: 6 });
+        // Limit number of pages parsed for speed and memory efficiency
+        const pdfData = await pdfParse(buffer, { max: 3 }); // Reduced from 6 to 3 pages
         const resumeText = pdfData.text;
 
         if (!resumeText || resumeText.trim() === '') {
@@ -407,8 +407,8 @@ const resolvers = {
         }
         
         // Prepare truncated inputs once to reduce memory usage
-        const truncatedResume = resumeText.slice(0, 2000); // Reduced from 5000
-        const truncatedJobDesc = jobDescription.slice(0, 1500); // Reduced from 3000
+        const truncatedResume = resumeText.slice(0, 1500); // Further reduced for memory efficiency
+        const truncatedJobDesc = jobDescription.slice(0, 1000); // Further reduced for memory efficiency
         
         console.log('📝 Processing with truncated inputs:', {
           originalResumeLength: resumeText.length,
@@ -450,7 +450,7 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
             { role: "user", content: `[USER_RESUME_JSON]:\n${JSON.stringify({rawContent: truncatedResume}, null, 2)}\n\n[JOB_DESCRIPTION_TEXT]:\n${truncatedJobDesc}` }
           ],
           response_format: { type: "json_object" },
-          max_tokens: 800, // Reduced from 1024 to limit memory usage
+          max_tokens: 600, // Further reduced for memory efficiency
           temperature: 0.7 // Add some creativity while keeping responses focused
         });
         
@@ -467,7 +467,7 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
           preview: rawAI.substring(0, 200)
         });
         
-        if (rawAI.length > 500000) { // Reduced from 1MB to 500KB
+        if (rawAI.length > 300000) { // Further reduced for memory efficiency
           throw new Error('AI response too large to process.');
         }
         
