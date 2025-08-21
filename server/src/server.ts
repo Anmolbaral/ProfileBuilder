@@ -1,4 +1,3 @@
-/// <reference path="./types/pdf-parse-lib.d.ts" />
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -13,7 +12,6 @@ import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
 import { PrismaClient } from '@prisma/client';
 // @ts-ignore - PDFKit has some type inconsistencies with modules
 import PDFKitDocument from 'pdfkit';
-import { PDFDocument as PDFLibDocument } from 'pdf-lib'; // Renamed to avoid conflict
 import fs from 'fs';
 import crypto from 'node:crypto';
 
@@ -79,6 +77,72 @@ async function extractStructuredInfo(text: string): Promise<any> {
   } catch (error) {
     return {};
   }
+}
+
+// Intelligent content selection system
+type JDSignals = { mustHave: Set<string>; niceToHave: Set<string>; };
+
+function extractJDSignals(jd: string): JDSignals {
+  const norm = (s: string) => s.toLowerCase();
+  const tokens = new Set(norm(jd).match(/[a-z0-9\-\+#\.]{2,}/g) || []);
+  // crude split: treat frequent tech terms as must-have (can be improved)
+  const mustHave = new Set([...tokens].filter(t => /sql|graphql|react|node|kafka|aws|gcp|python|typescript|etl|ml|llm|latency|throughput/.test(t)));
+  const niceToHave = new Set([...tokens].filter(t => !mustHave.has(t)));
+  return { mustHave, niceToHave };
+}
+
+function scoreBullet(bullet: string, sig: JDSignals, recencyBoost = 0, rarityMap?: Map<string, number>) {
+  const b = bullet.toLowerCase();
+  let s = 0;
+  for (const k of sig.mustHave) if (b.includes(k)) s += 8;
+  for (const k of sig.niceToHave) if (b.includes(k)) s += 2;
+  if (/\b(\d+%|\$\d+|p9[05]|p[0-9]{2}|[0-9]+(ms|s|x|k|m))\b/i.test(b)) s += 5; // impact
+  if (rarityMap) for (const [tok, rarity] of rarityMap) if (b.includes(tok)) s += rarity; // reward rare tech
+  s += recencyBoost; // newer roles get small boost
+  return s;
+}
+
+function topBullets(bullets: string[], sig: JDSignals, k = 3, recencyBoost = 0) {
+  return bullets
+    .map(b => ({ b, s: scoreBullet(b, sig, recencyBoost) }))
+    .sort((a, z) => z.s - a.s)
+    .slice(0, k)
+    .map(x => x.b);
+}
+
+function composeForLLM(parsed: any, jd: string, maxChars = 4000) {
+  const sig = extractJDSignals(jd);
+
+  const pinned = {
+    contactInfo: parsed.contactInfo ?? {},
+    education: (parsed.education ?? []).slice(0, 1), // summary row
+    skills: (parsed.skills ?? []).slice?.(0, 12) ?? parsed.skills
+  };
+
+  const roles = (parsed.experience ?? []).map((r: any, i: number) => {
+    const recencyBoost = Math.max(0, 3 - i); // boost top 3 roles
+    const picked = topBullets(r.impactBullets ?? [], sig, 3, recencyBoost);
+    return { company: r.company, position: r.position, duration: r.duration, location: r.location, impactBullets: picked };
+  });
+
+  // drop roles that ended up empty after ranking (low match)
+  const prunedRoles = roles.filter((r: any) => (r.impactBullets?.length ?? 0) > 0);
+
+  const projects = (parsed.projects ?? []).map((p: any) => {
+    const picked = topBullets(p.impactBullets ?? [], sig, 2, 1);
+    return { projectName: p.projectName, techStack: p.techStack, impactBullets: picked };
+  }).filter((p: any) => (p.impactBullets?.length ?? 0) > 0).slice(0, 2);
+
+  const out = { ...pinned, experience: prunedRoles.slice(0, 4), projects };
+
+  // final safety: hard cap by characters to respect model/window and keep latency/cost down
+  const json = JSON.stringify(out);
+  if (json.length > maxChars) {
+    // fallback: tighten bullets further
+    out.experience.forEach((r: any) => r.impactBullets = (r.impactBullets ?? []).slice(0, 2));
+    out.projects.forEach((p: any) => p.impactBullets = (p.impactBullets ?? []).slice(0, 1));
+  }
+  return out;
 }
 
 // **UPDATED**: A much more robust function to generate a compact, one-page PDF resume
@@ -189,8 +253,6 @@ async function generateResumePdf(resumeData: any, outputPath: string): Promise<v
 const RESULT_CACHE_MAX_ENTRIES = 50;
 type CachedResult = {
   downloadUrl: string;
-  updatedResumeJson: any;
-  changes: any;
   pdfPath: string;
 };
 const resultCache = new Map<string, CachedResult>();
@@ -268,12 +330,16 @@ const resolvers = {
       try {
         const { createReadStream, filename } = await file;
         
-        const buffer = await streamToBuffer(createReadStream());
+        let buffer = await streamToBuffer(createReadStream());
         
         const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
         const pdfData = await pdfParse(buffer);
         const extractedText = pdfData.text;
         
+        //free memory to avoid OOM
+        // @ts-ignore - Intentionally clearing buffer for memory management
+        buffer = null as any;
+
         const structuredInfo = await extractStructuredInfo(extractedText);
         
         const openaiResponse = await openai.chat.completions.create({
@@ -292,11 +358,8 @@ const resolvers = {
         });
         const summary = openaiResponse.choices[0].message.content || '';
         
-        const pdfDoc = await PDFLibDocument.load(buffer);
-        const pageCount = pdfDoc.getPageCount();
         
         const metadata = {
-          pageCount,
           summary,
           ...structuredInfo
         };
@@ -392,33 +455,35 @@ const resolvers = {
         if (cached) {
           return {
             downloadUrl: cached.downloadUrl,
-            changes: cached.changes,
-            updatedResumeJson: cached.updatedResumeJson,
           };
         }
         
         const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default as any;
-        // Limit number of pages parsed for speed and memory efficiency
-        const pdfData = await pdfParse(buffer, { max: 3 }); // Reduced from 6 to 3 pages
+        const pdfData = await pdfParse(buffer);
         const resumeText = pdfData.text;
 
         if (!resumeText || resumeText.trim() === '') {
             throw new Error('Could not extract text from the provided resume PDF.');
         }
         
-        // Prepare truncated inputs once to reduce memory usage
-        const truncatedResume = resumeText.slice(0, 1500); // Further reduced for memory efficiency
-        const truncatedJobDesc = jobDescription.slice(0, 1000); // Further reduced for memory efficiency
-        
-        console.log('📝 Processing with truncated inputs:', {
-          originalResumeLength: resumeText.length,
-          truncatedResumeLength: truncatedResume.length,
-          originalJobDescLength: jobDescription.length,
-          truncatedJobDescLength: truncatedJobDesc.length
-        });
-
-        // Kick off both calls in parallel to reduce total latency
+        // Use intelligent content selection instead of naive truncation
         const originalResumePromise = extractStructuredInfo(resumeText);
+        
+        const [originalResumeJson] = await Promise.all([
+          originalResumePromise,
+        ]);
+
+        console.log('✅ Resume parsing completed');
+        
+        // Use intelligent content selection
+        const compactResume = composeForLLM(originalResumeJson, jobDescription, 4000);
+        
+        console.log('📊 Intelligent content selection completed:', {
+          originalLength: JSON.stringify(originalResumeJson).length,
+          compactLength: JSON.stringify(compactResume).length,
+          experienceCount: compactResume.experience?.length || 0,
+          projectsCount: compactResume.projects?.length || 0
+        });
 
         // **STEP 2: Use the AI to update ONLY the experience and projects**
         const systemPrompt = `
@@ -428,7 +493,7 @@ You are 'Synapse', a top-tier career strategist. Your only task is to rewrite th
 # RULES
 - **One-Page Constraint & Dynamic Content Density:** This is your most important rule. The final resume MUST be concise enough to fit on a single page without large empty spaces or overflowing.
   - **Analyze Content Length:** First, assess the user's original resume content.
-  - **For Long Resumes:** If the user has extensive experience (e.g., 3+ jobs, 3+ projects), be RUTHLESS. Cut less relevant roles or projects entirely. Limit bullet points to the top 2-3 most impactful ones per entry. Write very concisely.
+  - **For Long Resumes:** If the user has extensive experience (e.g., 3+ jobs, 3+ projects), cut less relevant roles or projects entirely. Limit bullet points to the top 2-3 most impactful ones per entry. Write very concisely.
   - **For Short Resumes:** If the user's resume is short (e.g., a new graduate with 1-2 internships), you can use more detail to fill the page. Expand with up to 3-4 relevant bullet points per entry.
 - **Focus:** ONLY output the \`experience\` and \`projects\` keys. Do not output any other resume sections.
 - **Impact Statements:** Rewrite every bullet point to be a quantifiable impact statement (use the STAR method). Use the word "and" instead of "&".
@@ -441,24 +506,19 @@ You are 'Synapse', a top-tier career strategist. Your only task is to rewrite th
 Your response will be a JSON object containing ONLY the updated \`experience\` and \`projects\` arrays, followed by a "StrategicDebrief" explaining your changes.
 `;
 
-        // Use truncated values in the OpenAI prompt
-        console.log('🤖 Starting OpenAI API call...');
-        const aiUpdatePromise = openai.chat.completions.create({
+        // Use intelligent content selection in the OpenAI prompt
+        console.log('🤖 Starting OpenAI API call with intelligent content...');
+        const aiUpdate = await openai.chat.completions.create({
           model: "gpt-3.5-turbo", // Switched to gpt-3.5-turbo for faster response
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `[USER_RESUME_JSON]:\n${JSON.stringify({rawContent: truncatedResume}, null, 2)}\n\n[JOB_DESCRIPTION_TEXT]:\n${truncatedJobDesc}` }
+            { role: "user", content: `[USER_RESUME_JSON]:\n${JSON.stringify(compactResume, null, 2)}\n\n[JOB_DESCRIPTION_TEXT]:\n${jobDescription}` }
           ],
           response_format: { type: "json_object" },
           max_tokens: 600, // Further reduced for memory efficiency
           temperature: 0.7 // Add some creativity while keeping responses focused
         });
         
-        const [originalResumeJson, aiUpdate] = await Promise.all([
-          originalResumePromise,
-          aiUpdatePromise,
-        ]);
-
         console.log('✅ OpenAI API call completed');
         
         const rawAI = aiUpdate.choices[0].message.content || '{}';
@@ -522,8 +582,6 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
         // Store in cache for subsequent identical requests
         setCachedResult(requestKey, {
           downloadUrl,
-          changes: changeLog,
-          updatedResumeJson: finalResumeJson,
           pdfPath,
         });
 

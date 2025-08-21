@@ -27,6 +27,10 @@ steps:
       - 'profilebuilder-runner@$PROJECT_ID.iam.gserviceaccount.com'
       - '--add-cloudsql-instances'
       - '$PROJECT_ID:us-central1:profilebuilder-db'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
       - '--port'
       - '8080'
 
