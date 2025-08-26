@@ -232,16 +232,7 @@ const ResultsPage: React.FC = () => {
                     )}
                   </CardContent>
                 </Card>
-                {updatedResume.summary && (
-                  <Card className="results-page__card">
-                    <CardHeader className="results-page__card-header">
-                      <CardTitle className="results-page__card-title">Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent className="results-page__card-content">
-                      <Typography>{updatedResume.summary}</Typography>
-                    </CardContent>
-                  </Card>
-                )}
+
                 {updatedResume.changes && Object.keys(updatedResume.changes).length > 0 && (
                   <Card className="results-page__card">
                     <CardHeader className="results-page__card-header">
