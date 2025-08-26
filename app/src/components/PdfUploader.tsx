@@ -14,7 +14,6 @@ const UPDATE_RESUME = gql`
   mutation UpdateResume($resume: Upload!, $jobDescription: String!) {
     updateResume(resume: $resume, jobDescription: $jobDescription) {
       downloadUrl
-      summary
       changes
       updatedResumeJson
     }
@@ -42,6 +41,16 @@ export function PdfUploader() {
   const [retryCount, setRetryCount] = useState(0)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const navigate = useNavigate()
+
+  // Helper function to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
 
   // Network connectivity monitoring
   useEffect(() => {
@@ -339,7 +348,6 @@ export function PdfUploader() {
             mutation UpdateResume($resume: Upload!, $jobDescription: String!) {
               updateResume(resume: $resume, jobDescription: $jobDescription) {
                 downloadUrl
-                summary
                 changes
                 updatedResumeJson
               }
@@ -406,7 +414,12 @@ export function PdfUploader() {
             const resultWithMetadata = {
               ...result.data.updateResume,
               processedAt: Date.now(),
-              processingTime
+              processingTime,
+              // Store original file data for Interactive Studio
+              originalFileData: await fileToBase64(file),
+              originalFileName: file.name,
+              originalFileType: file.type,
+              jobDescription: jobDescription.trim()
             };
             localStorage.setItem('resumeAnalysisResult', JSON.stringify(resultWithMetadata));
             
@@ -439,7 +452,12 @@ export function PdfUploader() {
       const resultWithMetadata = {
         ...result.data.updateResume,
         processedAt: Date.now(),
-        processingTime
+        processingTime,
+        // Store original file data for Interactive Studio
+        originalFileData: await fileToBase64(file),
+        originalFileName: file.name,
+        originalFileType: file.type,
+        jobDescription: jobDescription.trim()
       }
       localStorage.setItem('resumeAnalysisResult', JSON.stringify(resultWithMetadata))
       

@@ -1,6 +1,66 @@
 scalar DateTime
 scalar JSON
 scalar Upload
+
+type Role {
+  id: ID!
+  company: String!
+  position: String!
+  duration: String!
+  location: String!
+  bullets: [Bullet!]!
+  jdMatchScore: Float!
+  impactScore: Float!
+}
+
+type Bullet {
+  id: ID!
+  text: String!
+  jdMatchScore: Float!
+  impactScore: Float!
+  suggested: Boolean!
+}
+
+type Project {
+  id: ID!
+  projectName: String!
+  techStack: String!
+  bullets: [Bullet!]!
+  jdMatchScore: Float!
+}
+
+type CoverageBucket {
+  category: String!
+  covered: Int!
+  total: Int!
+  percentage: Float!
+}
+
+type OptimizationPlan {
+  id: ID!
+  roles: [Role!]!
+  projects: [Project!]!
+  coverage: [CoverageBucket!]!
+}
+
+type FitMetrics {
+  overallScore: Float!
+  experienceMatch: Float!
+  projectMatch: Float!
+  skillCoverage: Float!
+  missingKeywords: [String!]!
+}
+
+type PlanResult {
+  plan: OptimizationPlan!
+  fit: FitMetrics!
+}
+
+type ApplyResult {
+  updatedResumeJson: JSON!
+  fit: FitMetrics!
+}
+
 type ExtractedDocument {
   id: ID!
   filename: String!
@@ -9,18 +69,100 @@ type ExtractedDocument {
   createdAt: DateTime!
 }
 
+type UpdateResumeResult {
+  downloadUrl: String!
+  changes: String
+  updatedResumeJson: JSON
+  missingKeywords: [String!]
+}
+
+input RoleDecisionInput {
+  roleId: ID!
+  action: String! # KEEP, CONDENSE, HIDE
+  selectedBullets: [ID!]
+}
+
+input ProjectDecisionInput {
+  projectId: ID!
+  action: String! # KEEP, CONDENSE, HIDE
+  selectedBullets: [ID!]
+}
+
 type Query {
   documents: [ExtractedDocument!]!
 }
 
-type UpdatedResumeResult {
-  downloadUrl: String!
-  summary: String
-  changes: JSON
-  updatedResumeJson: JSON
-}
-
 type Mutation {
   uploadPdf(file: Upload!): ExtractedDocument!
-  updateResume(resume: Upload!, jobDescription: String!): UpdatedResumeResult!
+  updateResume(resume: Upload!, jobDescription: String!): UpdateResumeResult!
+  
+  # New interactive mutations
+  createOptimizationPlan(resume: Upload!, jobDescription: String!, companyName: String): PlanResult!
+  applyDecisions(
+    planId: ID!,
+    roleDecisions: [RoleDecisionInput!]!,
+    projectDecisions: [ProjectDecisionInput!]!,
+    jdText: String!
+  ): ApplyResult!
+  suggestBulletEdits(
+    planId: ID!,
+    bulletId: ID!,
+    currentText: String!,
+    jdText: String!,
+    mustInclude: [String!]
+  ): [String!]!
+  
+  # Enhanced Interactive Studio mutations
+  updateSection(
+    planId: ID!,
+    sectionType: String!,
+    sectionId: ID!,
+    updatedContent: JSON!,
+    jdText: String!
+  ): SectionUpdateResult!
+  
+  recalculateScores(
+    planId: ID!,
+    updatedResumeJson: JSON!,
+    jdText: String!
+  ): ScoreUpdateResult!
+  
+  suggestSectionImprovement(
+    planId: ID!,
+    sectionType: String!,
+    sectionId: ID!,
+    currentContent: JSON!,
+    jdText: String!,
+    improvementType: String!
+  ): SectionSuggestionResult!
+}
+
+type SectionUpdateResult {
+  success: Boolean!
+  updatedResumeJson: JSON!
+  newScores: ScoreUpdateResult!
+}
+
+type ScoreUpdateResult {
+  overallScore: Float!
+  experienceMatch: Float!
+  projectMatch: Float!
+  skillCoverage: Float!
+  keywordCoverage: Float!
+  impactScore: Float!
+}
+
+type SectionSuggestionResult {
+  original: JSON!
+  suggested: JSON!
+  changes: [ChangeDetail!]!
+  reasoning: String!
+}
+
+type ChangeDetail {
+  type: String! # "addition", "removal", "modification"
+  field: String!
+  oldValue: String
+  newValue: String
+  impact: String!
 }

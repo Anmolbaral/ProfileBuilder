@@ -17,6 +17,7 @@ export function KeywordTag({ keyword, isMissing = false }: { keyword: string; is
 }
 
 export function KeywordHub({ missing = [], found = [] }: { missing?: string[]; found?: string[] }) {
+  console.log('🔍 KeywordHub Debug:', { missing, found, missingLength: missing?.length, foundLength: found?.length });
   const [tab, setTab] = React.useState<'missing' | 'found'>('missing');
   return (
     <div className="card-container">

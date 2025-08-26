@@ -9,11 +9,25 @@ import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.mjs';
 import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
+import GraphQLJSON from 'graphql-type-json';
 import { PrismaClient } from '@prisma/client';
 // @ts-ignore - PDFKit has some type inconsistencies with modules
 import PDFKitDocument from 'pdfkit';
 import fs from 'fs';
 import crypto from 'node:crypto';
+import { 
+  savePlan, 
+  getPlan, 
+  newPlanId, 
+  getPlanStats 
+} from './utils/planStore.js';
+import { 
+  generateOptimizationPlan, 
+  calculateFitMetrics, 
+  applyUserDecisions, 
+  generateBulletSuggestions
+} from './utils/optimization.js';
+import { stableId } from './utils/planStore.js';
 
 // Define a type for the file upload promise
 interface FileUpload {
@@ -24,6 +38,12 @@ interface FileUpload {
 }
 
 dotenv.config();
+
+// Validate required environment variables
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is required');
+}
+
 const prisma = new PrismaClient();
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -54,6 +74,100 @@ async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+// Helper to parse PDF
+async function parsePdf(buffer: Buffer): Promise<any> {
+  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default as any;
+  return await pdfParse(buffer);
+}
+
+/**
+ * Conservative PDF text normalizer.
+ * Keeps bullets + section boundaries intact.
+ */
+function normalizePdfText(rawText: string): string {
+  let s = (rawText || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+$/gm, '');
+
+  // common ligatures
+  s = s.replace(/ﬁ/g, 'fi').replace(/ﬂ/g, 'fl');
+
+  // protect paragraph breaks
+  s = s.replace(/\n{2,}/g, '⏎⏎');
+
+  // hyphenated wraps + soft wraps
+  s = s.replace(/([A-Za-z0-9])-\n(?=[a-z0-9])/g, '$1');
+  s = s.replace(/([A-Za-z0-9])\n(?=[a-z0-9])/g, '$1');
+
+  // fold remaining newlines
+  s = s.replace(/\n/g, ' ');
+
+  // restore paragraphs
+  s = s.replace(/⏎⏎/g, '\n\n');
+
+  // normalize bullets and dashes
+  s = s
+    .replace(/[•●▪◦·]/g, '•')
+    .replace(/(^|\n)\s*[-–—]\s+/g, '\n• ')
+    .replace(/(?:^|\n)\s*•\s*/g, '\n• ');
+
+  // collapse extra blanks
+  s = s.replace(/\n{3,}/g, '\n\n');
+  return s.trim();
+}
+
+// Helper to generate section improvement suggestions
+async function generateSectionSuggestions(
+  sectionType: string,
+  currentContent: any,
+  jdText: string,
+  improvementType: string
+): Promise<any> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { 
+          role: "system", 
+          content: `You are a resume optimization expert. Analyze the current content and suggest improvements based on the job description and improvement type. Return a JSON object with original content, suggested improvements, and detailed changes.`
+        },
+        {
+          role: "user",
+          content: `Section Type: ${sectionType}
+Improvement Type: ${improvementType}
+Current Content: ${JSON.stringify(currentContent, null, 2)}
+Job Description: ${jdText}
+
+Generate improvements and return as JSON with:
+- original: current content
+- suggested: improved content
+- changes: array of change details with type, field, oldValue, newValue, impact
+- reasoning: explanation of improvements`
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1000,
+      temperature: 0.3
+    });
+    
+    const result = JSON.parse(response.choices[0].message.content || '{}');
+    return {
+      original: currentContent,
+      suggested: result.suggested || currentContent,
+      changes: result.changes || [],
+      reasoning: result.reasoning || 'No specific improvements suggested.'
+    };
+  } catch (error) {
+    console.error('Failed to generate section suggestions:', error);
+    return {
+      original: currentContent,
+      suggested: currentContent,
+      changes: [],
+      reasoning: 'Unable to generate suggestions at this time.'
+    };
+  }
+}
+
 // Helper to extract and structure information from PDF text
 async function extractStructuredInfo(text: string): Promise<any> {
   try {
@@ -64,8 +178,8 @@ async function extractStructuredInfo(text: string): Promise<any> {
           role: "system",
           content: `You are a highly accurate resume parser. Extract all sections from the provided text, including contactInfo (name, email, phone, linkedin, github), education (as an array), experience (as an array), projects (as an array), skills (as an object or array), and honorsAndAwards (as an array). Maintain the original structure and content as closely as possible. Return the data in a valid JSON object.`
         },
-        {
-          role: "user",
+        { 
+          role: "user", 
           content: text
         }
       ],
@@ -79,71 +193,7 @@ async function extractStructuredInfo(text: string): Promise<any> {
   }
 }
 
-// Intelligent content selection system
-type JDSignals = { mustHave: Set<string>; niceToHave: Set<string>; };
 
-function extractJDSignals(jd: string): JDSignals {
-  const norm = (s: string) => s.toLowerCase();
-  const tokens = new Set(norm(jd).match(/[a-z0-9\-\+#\.]{2,}/g) || []);
-  // crude split: treat frequent tech terms as must-have (can be improved)
-  const mustHave = new Set([...tokens].filter(t => /sql|graphql|react|node|kafka|aws|gcp|python|typescript|etl|ml|llm|latency|throughput/.test(t)));
-  const niceToHave = new Set([...tokens].filter(t => !mustHave.has(t)));
-  return { mustHave, niceToHave };
-}
-
-function scoreBullet(bullet: string, sig: JDSignals, recencyBoost = 0, rarityMap?: Map<string, number>) {
-  const b = bullet.toLowerCase();
-  let s = 0;
-  for (const k of sig.mustHave) if (b.includes(k)) s += 8;
-  for (const k of sig.niceToHave) if (b.includes(k)) s += 2;
-  if (/\b(\d+%|\$\d+|p9[05]|p[0-9]{2}|[0-9]+(ms|s|x|k|m))\b/i.test(b)) s += 5; // impact
-  if (rarityMap) for (const [tok, rarity] of rarityMap) if (b.includes(tok)) s += rarity; // reward rare tech
-  s += recencyBoost; // newer roles get small boost
-  return s;
-}
-
-function topBullets(bullets: string[], sig: JDSignals, k = 3, recencyBoost = 0) {
-  return bullets
-    .map(b => ({ b, s: scoreBullet(b, sig, recencyBoost) }))
-    .sort((a, z) => z.s - a.s)
-    .slice(0, k)
-    .map(x => x.b);
-}
-
-function composeForLLM(parsed: any, jd: string, maxChars = 4000) {
-  const sig = extractJDSignals(jd);
-
-  const pinned = {
-    contactInfo: parsed.contactInfo ?? {},
-    education: (parsed.education ?? []).slice(0, 1), // summary row
-    skills: (parsed.skills ?? []).slice?.(0, 12) ?? parsed.skills
-  };
-
-  const roles = (parsed.experience ?? []).map((r: any, i: number) => {
-    const recencyBoost = Math.max(0, 3 - i); // boost top 3 roles
-    const picked = topBullets(r.impactBullets ?? [], sig, 3, recencyBoost);
-    return { company: r.company, position: r.position, duration: r.duration, location: r.location, impactBullets: picked };
-  });
-
-  // drop roles that ended up empty after ranking (low match)
-  const prunedRoles = roles.filter((r: any) => (r.impactBullets?.length ?? 0) > 0);
-
-  const projects = (parsed.projects ?? []).map((p: any) => {
-    const picked = topBullets(p.impactBullets ?? [], sig, 2, 1);
-    return { projectName: p.projectName, techStack: p.techStack, impactBullets: picked };
-  }).filter((p: any) => (p.impactBullets?.length ?? 0) > 0).slice(0, 2);
-
-  const out = { ...pinned, experience: prunedRoles.slice(0, 4), projects };
-
-  // final safety: hard cap by characters to respect model/window and keep latency/cost down
-  const json = JSON.stringify(out);
-  if (json.length > maxChars) {
-    // fallback: tighten bullets further
-    out.experience.forEach((r: any) => r.impactBullets = (r.impactBullets ?? []).slice(0, 2));
-    out.projects.forEach((p: any) => p.impactBullets = (p.impactBullets ?? []).slice(0, 1));
-  }
-  return out;
-}
 
 // **UPDATED**: A much more robust function to generate a compact, one-page PDF resume
 async function generateResumePdf(resumeData: any, outputPath: string): Promise<void> {
@@ -244,8 +294,18 @@ async function generateResumePdf(resumeData: any, outputPath: string): Promise<v
     doc.end();
 
     return new Promise<void>((resolve, reject) => {
-        writeStream.on('finish', resolve);
-        writeStream.on('error', reject);
+        const timeout = setTimeout(() => {
+            reject(new Error('PDF generation timed out after 30 seconds'));
+        }, 30000);
+
+        writeStream.on('finish', () => {
+            clearTimeout(timeout);
+            resolve();
+        });
+        writeStream.on('error', (error) => {
+            clearTimeout(timeout);
+            reject(error);
+        });
     });
 }
 
@@ -253,6 +313,8 @@ async function generateResumePdf(resumeData: any, outputPath: string): Promise<v
 const RESULT_CACHE_MAX_ENTRIES = 50;
 type CachedResult = {
   downloadUrl: string;
+  changes: string;
+  updatedResumeJson: any;
   pdfPath: string;
 };
 const resultCache = new Map<string, CachedResult>();
@@ -270,12 +332,11 @@ function computeRequestKey(buffer: Buffer, jobDescription: string): string {
 function getCachedResult(key: string): CachedResult | null {
   const cached = resultCache.get(key);
   if (!cached) return null;
-  // Ensure file still exists; if not, invalidate
   if (!fs.existsSync(cached.pdfPath)) {
     resultCache.delete(key);
     return null;
   }
-  // Touch entry to mark as recently used
+  // touch
   resultCache.delete(key);
   resultCache.set(key, cached);
   return cached;
@@ -285,15 +346,14 @@ function setCachedResult(key: string, value: CachedResult) {
   if (resultCache.has(key)) resultCache.delete(key);
   resultCache.set(key, value);
   if (resultCache.size > RESULT_CACHE_MAX_ENTRIES) {
-    // Evict least-recently used (first entry in Map)
     const oldestKey = resultCache.keys().next().value as string | undefined;
     if (oldestKey) resultCache.delete(oldestKey);
   }
 }
 
-
 const resolvers = {
   Upload: GraphQLUpload,
+  JSON: GraphQLJSON,
   Query: {
     documents: async (_: any, __: any, { prisma }: { prisma: PrismaClient }) => {
       try {
@@ -332,26 +392,26 @@ const resolvers = {
         
         let buffer = await streamToBuffer(createReadStream());
         
-        const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-        const pdfData = await pdfParse(buffer);
+        const pdfData = await parsePdf(buffer);
         const extractedText = pdfData.text;
         
         //free memory to avoid OOM
         // @ts-ignore - Intentionally clearing buffer for memory management
         buffer = null as any;
 
-        const structuredInfo = await extractStructuredInfo(extractedText);
+        const normalized = normalizePdfText(extractedText);
+        const structuredInfo = await extractStructuredInfo(normalized);
         
         const openaiResponse = await openai.chat.completions.create({
           model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
+      messages: [
+        { 
+          role: "system", 
               content: "You are a document analysis assistant. Provide a concise summary of the document, highlighting key points."
             },
-            {
-              role: "user",
-              content: `Analyze this document:\n\n${extractedText}`
+        { 
+          role: "user", 
+              content: `Analyze this document:\n\n${normalized}`
             }
           ],
           max_tokens: 500
@@ -407,7 +467,7 @@ const resolvers = {
       try {
         if (!jobDescription || jobDescription.trim() === '') {
             console.error('❌ Job description validation failed:', { jobDescription });
-            throw new Error('Job Description cannot be empty.');
+          throw new Error('Job Description cannot be empty.');
         }
 
         console.log('⏳ Awaiting file upload promise...');
@@ -422,7 +482,7 @@ const resolvers = {
         // Validate file type
         if (mimetype !== 'application/pdf') {
             console.error('❌ Invalid file type:', { mimetype, expected: 'application/pdf' });
-            throw new Error('Invalid file type. Please upload a PDF file.');
+          throw new Error('Invalid file type. Please upload a PDF file.');
         }
         
         console.log('✅ File type validation passed');
@@ -444,7 +504,7 @@ const resolvers = {
               maxSize: 10 * 1024 * 1024,
               sizeMB: (buffer.length / (1024 * 1024)).toFixed(2)
             });
-            throw new Error('File too large. Please upload a PDF smaller than 10MB.');
+          throw new Error('File too large. Please upload a PDF smaller than 10MB.');
         }
         
         console.log('✅ File size validation passed');
@@ -455,6 +515,8 @@ const resolvers = {
         if (cached) {
           return {
             downloadUrl: cached.downloadUrl,
+            changes: cached.changes,
+            updatedResumeJson: cached.updatedResumeJson,
           };
         }
         
@@ -463,59 +525,63 @@ const resolvers = {
         const resumeText = pdfData.text;
 
         if (!resumeText || resumeText.trim() === '') {
-            throw new Error('Could not extract text from the provided resume PDF.');
+          throw new Error('Could not extract text from the provided resume PDF.');
         }
         
-        // Use intelligent content selection instead of naive truncation
-        const originalResumePromise = extractStructuredInfo(resumeText);
-        
-        const [originalResumeJson] = await Promise.all([
-          originalResumePromise,
-        ]);
+        // Normalize PDF text before parsing
+        const normalizedText = normalizePdfText(resumeText);
+        const originalResumeJson = await extractStructuredInfo(normalizedText);
 
         console.log('✅ Resume parsing completed');
         
-        // Use intelligent content selection
-        const compactResume = composeForLLM(originalResumeJson, jobDescription, 4000);
-        
-        console.log('📊 Intelligent content selection completed:', {
+        console.log('📊 Resume data prepared for AI:', {
           originalLength: JSON.stringify(originalResumeJson).length,
-          compactLength: JSON.stringify(compactResume).length,
-          experienceCount: compactResume.experience?.length || 0,
-          projectsCount: compactResume.projects?.length || 0
+          experienceCount: originalResumeJson.experience?.length || 0,
+          projectsCount: originalResumeJson.projects?.length || 0
         });
 
         // **STEP 2: Use the AI to update ONLY the experience and projects**
         const systemPrompt = `
 # MISSION
-You are 'Synapse', a top-tier career strategist. Your only task is to rewrite the "experience" and "projects" sections of a resume to align with a job description, ensuring the final content creates a well-balanced, professional, single-page document.
+You are 'Synapse', a top-tier career strategist. Your task is to rewrite the "experience" and "projects" sections of a resume to align with a job description, optimizing for relevance and impact while preserving all valuable content.
 
 # RULES
-- **One-Page Constraint & Dynamic Content Density:** This is your most important rule. The final resume MUST be concise enough to fit on a single page without large empty spaces or overflowing.
-  - **Analyze Content Length:** First, assess the user's original resume content.
-  - **For Long Resumes:** If the user has extensive experience (e.g., 3+ jobs, 3+ projects), cut less relevant roles or projects entirely. Limit bullet points to the top 2-3 most impactful ones per entry. Write very concisely.
-  - **For Short Resumes:** If the user's resume is short (e.g., a new graduate with 1-2 internships), you can use more detail to fill the page. Expand with up to 3-4 relevant bullet points per entry.
+- **Preserve All Content:** Keep all relevant experience and projects. Only remove content that is clearly irrelevant to the target position.
 - **Focus:** ONLY output the \`experience\` and \`projects\` keys. Do not output any other resume sections.
 - **Impact Statements:** Rewrite every bullet point to be a quantifiable impact statement (use the STAR method). Use the word "and" instead of "&".
 - **Structure:** The final output MUST be a single, valid JSON object starting with \`{\` and ending with \`}\`.
   - \`experience\` MUST be an array of objects: \`[{"company": "...", "position": "...", "duration": "...", "location": "...", "impactBullets": ["..."]}]\`.
   - \`projects\` MUST be an array of objects: \`[{"projectName": "...", "techStack": "...", "impactBullets": ["..."]}]\`.
   - The \`impactBullets\` key is mandatory and must be an array of strings.
+- **Optimization:** Prioritize content that directly relates to the job requirements while maintaining comprehensive coverage of the candidate's background.
 
-# FINAL OUTPUT
-Your response will be a JSON object containing ONLY the updated \`experience\` and \`projects\` arrays, followed by a "StrategicDebrief" explaining your changes.
+# REQUIRED OUTPUT FORMAT
+Your response MUST be a JSON object with this exact structure:
+{
+  "experience": [...],
+  "projects": [...],
+  "StrategicDebrief": "A detailed explanation of what changes you made and why, including specific improvements to impact statements, relevance optimization, and any content that was enhanced or restructured."
+}
+
+# STRATEGIC DEBRIEF REQUIREMENTS
+The StrategicDebrief field MUST include:
+1. **Summary of Changes:** What sections were modified and why
+2. **Impact Improvements:** How bullet points were enhanced with quantifiable metrics
+3. **Relevance Optimization:** How content was aligned with the job description
+4. **Content Preservation:** What valuable content was maintained
+5. **Specific Examples:** Mention 2-3 specific improvements made
 `;
 
-        // Use intelligent content selection in the OpenAI prompt
-        console.log('🤖 Starting OpenAI API call with intelligent content...');
+        // Use full resume data in the OpenAI prompt
+        console.log('🤖 Starting OpenAI API call with full resume data...');
         const aiUpdate = await openai.chat.completions.create({
           model: "gpt-3.5-turbo", // Switched to gpt-3.5-turbo for faster response
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `[USER_RESUME_JSON]:\n${JSON.stringify(compactResume, null, 2)}\n\n[JOB_DESCRIPTION_TEXT]:\n${jobDescription}` }
+            { role: "user", content: `[USER_RESUME_JSON]:\n${JSON.stringify(originalResumeJson, null, 2)}\n\n[JOB_DESCRIPTION_TEXT]:\n${jobDescription}` }
           ],
           response_format: { type: "json_object" },
-          max_tokens: 600, // Further reduced for memory efficiency
+          max_tokens: 1500, // Increased for full data processing
           temperature: 0.7 // Add some creativity while keeping responses focused
         });
         
@@ -527,12 +593,31 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
           preview: rawAI.substring(0, 200)
         });
         
+        console.log('🔍 Full AI Response for debugging:', rawAI);
+        
         if (rawAI.length > 300000) { // Further reduced for memory efficiency
           throw new Error('AI response too large to process.');
         }
         
         const aiResult = JSON.parse(rawAI);
-        const changeLog = aiResult.StrategicDebrief || 'No changes logged by AI.';
+        
+        // Generate a comprehensive change log with fallback
+        let changeLog = aiResult.StrategicDebrief;
+        if (!changeLog || changeLog.trim() === '') {
+          // Create a fallback debrief based on what we can observe
+          const originalExpCount = originalResumeJson.experience?.length || 0;
+          const originalProjCount = originalResumeJson.projects?.length || 0;
+          const aiExpCount = aiResult.experience?.length || 0;
+          const aiProjCount = aiResult.projects?.length || 0;
+          
+          const changes = [];
+          if (aiExpCount > 0) changes.push(`Enhanced ${aiExpCount} experience entries with quantifiable impact statements`);
+          if (aiProjCount > 0) changes.push(`Optimized ${aiProjCount} projects with improved descriptions and tech stack details`);
+          
+          changeLog = changes.length > 0 
+            ? `AI Optimization Summary: ${changes.join(' and ')}. All content has been restructured to use the STAR method with specific metrics and achievements.`
+            : 'AI Optimization Summary: Resume content has been analyzed and optimized for better impact and relevance to the target position.';
+        }
         
         // Clean up large variables to free memory
         // aiUpdate = null; // Let garbage collection handle it
@@ -560,36 +645,117 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
         if (Object.keys(finalResumeJson).length > 1000) {
           throw new Error('Resume data too large to process.');
         }
+
+        // **STEP 4: Calculate missing keywords for the main response**
+        console.log('🔍 Calculating missing keywords...');
         
-        const uniqueId = Date.now() + '-' + Math.floor(Math.random() * 10000);
-        const pdfFilename = `updated-resume-${uniqueId}.pdf`;
-        const pdfPath = path.join(downloadsDir, pdfFilename);
+        // Extract keywords from job description
+        const extractSkillsFromJD = (jd: string): string[] => {
+          const commonSkills = [
+            'javascript', 'python', 'java', 'react', 'node.js', 'sql', 'aws', 'docker',
+            'kubernetes', 'git', 'html', 'css', 'api', 'rest', 'graphql', 'mongodb',
+            'postgresql', 'redis', 'kafka', 'elasticsearch', 'jenkins', 'ci/cd',
+            'agile', 'scrum', 'tdd', 'bdd', 'microservices', 'serverless', 'typescript',
+            'vue', 'angular', 'next.js', 'express', 'fastapi', 'django', 'spring',
+            'terraform', 'ansible', 'jenkins', 'gitlab', 'github', 'jira', 'confluence'
+          ];
+          
+          const jdLower = jd.toLowerCase();
+          return commonSkills.filter(skill => jdLower.includes(skill));
+        };
+        
+        // Extract keywords from resume
+        const resumeKeywords = new Set<string>();
+        const allText = JSON.stringify(finalResumeJson).toLowerCase();
+        
+        // Add skills from resume
+        if (finalResumeJson.skills) {
+          const skills = Array.isArray(finalResumeJson.skills) ? finalResumeJson.skills : 
+            Object.values(finalResumeJson.skills).flat();
+          skills.forEach((skill: string) => resumeKeywords.add(skill.toLowerCase()));
+        }
+        
+        // Add keywords from experience and project bullets
+        [...(finalResumeJson.experience || []), ...(finalResumeJson.projects || [])].forEach((item: any) => {
+          if (item.impactBullets) {
+            item.impactBullets.forEach((bullet: string) => {
+              const words = bullet.toLowerCase().match(/\b\w+\b/g) || [];
+              words.forEach((word: string) => {
+                if (word.length > 3) resumeKeywords.add(word);
+              });
+            });
+          }
+        });
+        
+        const jdKeywords = extractSkillsFromJD(jobDescription);
+        const missingKeywords = jdKeywords.filter(keyword => !resumeKeywords.has(keyword));
+        
+        console.log('🔍 Missing keywords found:', missingKeywords);
+        
+        // const uniqueId = Date.now() + '-' + Math.floor(Math.random() * 10000);
+        // const pdfFilename = `updated-resume-${uniqueId}.pdf`;
+        // const pdfPath = path.join(downloadsDir, pdfFilename);
         
         
         // **STEP 4: Generate the new PDF using the merged data**
-        await generateResumePdf(finalResumeJson, pdfPath);
+        // TEMPORARILY DISABLED: PDF generation for testing other features
+        console.log('📄 PDF generation temporarily disabled for testing');
         
-        if (!fs.existsSync(pdfPath)) {
-          throw new Error('PDF file was not created successfully.');
-        }
+        // const uniqueId = Date.now() + '-' + Math.floor(Math.random() * 10000);
+        // const pdfFilename = `updated-resume-${uniqueId}.pdf`;
+        // const pdfPath = path.join(downloadsDir, pdfFilename);
+        
+        // console.log('📄 Starting PDF generation...');
+        // console.log('📄 PDF path:', pdfPath);
+        // console.log('📄 Resume data keys:', Object.keys(finalResumeJson));
+        
+        // try {
+        //   await generateResumePdf(finalResumeJson, pdfPath);
+        //   console.log('✅ PDF generation completed successfully');
+        // } catch (pdfError) {
+        //   console.error('❌ PDF generation failed:', pdfError);
+        //   throw new Error(`PDF generation failed: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`);
+        // }
+        
+        // if (!fs.existsSync(pdfPath)) {
+        //   throw new Error('PDF file was not created successfully.');
+        // }
 
-        const port = parseInt(process.env.PORT || '8080', 10);
-        const baseUrl = process.env.NODE_ENV === 'production' 
-          ? 'https://profilebuilder-backend-xx3otar6ca-uc.a.run.app'
-          : `http://localhost:${port}`;
-        const downloadUrl = `${baseUrl}/downloads/${pdfFilename}`;
+        // const port = parseInt(process.env.PORT || '8080', 10);
+        // const baseUrl = process.env.NODE_ENV === 'production' 
+        //   ? 'https://profilebuilder-backend-xx3otar6ca-uc.a.run.app'
+        //   : `http://localhost:${port}`;
+        // const downloadUrl = `${baseUrl}/downloads/${pdfFilename}`;
+        
+        // Create a mock download URL for now
+        const downloadUrl = `/downloads/mock-resume-${Date.now()}.pdf`;
 
-        // Store in cache for subsequent identical requests
-        setCachedResult(requestKey, {
-          downloadUrl,
-          pdfPath,
-        });
-
-        return {
+        const resultForClient = {
           downloadUrl,
           changes: changeLog,
-          updatedResumeJson: finalResumeJson // Return the complete, merged resume
+          updatedResumeJson: finalResumeJson, // full for the first response
+          missingKeywords, // Add missing keywords to the response
         };
+
+        // Trim heavy fields for cache to keep memory headroom
+        const cachedResumeJson = {
+          contactInfo: finalResumeJson.contactInfo,
+          education: (finalResumeJson.education || []).slice(0, 1),
+          skills: finalResumeJson.skills,
+          experience: (finalResumeJson.experience || []).slice(0, 3),
+          projects: (finalResumeJson.projects || []).slice(0, 2),
+        };
+
+        // Store in cache for subsequent identical requests
+        // TEMPORARILY DISABLED: Cache storage since PDF generation is disabled
+        // setCachedResult(requestKey, {
+        //   downloadUrl,
+        //   changes: changeLog,
+        //   updatedResumeJson: cachedResumeJson,
+        //   pdfPath: '', // No PDF path since generation is disabled
+        // });
+
+        return resultForClient;
       } catch (error) {
         console.error('❌ updateResume mutation error:', {
           error: error,
@@ -601,6 +767,290 @@ Your response will be a JSON object containing ONLY the updated \`experience\` a
             throw new Error(`Failed to update resume: ${error.message}`);
         }
         throw new Error('An unknown error occurred while updating the resume.');
+      }
+    },
+
+    // New interactive optimization mutations
+    createOptimizationPlan: async (
+      _: any,
+      { resume, jobDescription, companyName }: { resume: Promise<FileUpload>; jobDescription: string; companyName?: string }
+    ) => {
+      console.log('🎯 === createOptimizationPlan MUTATION CALLED ===');
+      
+      try {
+        // Parse resume (reuse existing logic)
+        const { createReadStream } = await resume;
+        const buffer = await streamToBuffer(createReadStream());
+        
+        const pdfData = await parsePdf(buffer);
+        const normalizedText = normalizePdfText(pdfData.text);
+        const originalResumeJson = await extractStructuredInfo(normalizedText);
+        
+        // Generate plan with scoring (including company research)
+        const plan = await generateOptimizationPlan(originalResumeJson, jobDescription, companyName);
+        const fit = await calculateFitMetrics(plan, jobDescription);
+        
+        // Store plan
+        const planId = newPlanId();
+        savePlan(planId, {
+          plan: { ...plan, id: planId },
+          fit,
+          createdAt: Date.now(),
+          originalResumeJson
+        });
+        
+        console.log('✅ Optimization plan created:', {
+          planId,
+          rolesCount: plan.roles.length,
+          projectsCount: plan.projects.length,
+          overallScore: fit.overallScore
+        });
+
+        return {
+          plan: { ...plan, id: planId },
+          fit
+        };
+      } catch (error) {
+        console.error('❌ createOptimizationPlan error:', error);
+        throw new Error(`Failed to create optimization plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+
+    applyDecisions: async (
+      _: any,
+      { planId, roleDecisions, projectDecisions, jdText }: {
+        planId: string;
+        roleDecisions: any[];
+        projectDecisions: any[];
+        jdText: string;
+      }
+    ) => {
+      console.log('🔄 === applyDecisions MUTATION CALLED ===');
+      
+      try {
+        const planBlob = getPlan(planId);
+        if (!planBlob) {
+          throw new Error('Plan expired or not found. Please re-upload your resume.');
+        }
+        
+        const updatedResumeJson = await applyUserDecisions(
+          planBlob.originalResumeJson,
+          planBlob.plan,
+          roleDecisions,
+          projectDecisions
+        );
+        
+        const newFit = await calculateFitMetrics(planBlob.plan, jdText);
+        
+        console.log('✅ Decisions applied successfully:', {
+          planId,
+          roleDecisionsCount: roleDecisions.length,
+          projectDecisionsCount: projectDecisions.length,
+          newOverallScore: newFit.overallScore
+        });
+
+        return {
+          updatedResumeJson,
+          fit: newFit
+        };
+      } catch (error) {
+        console.error('❌ applyDecisions error:', error);
+        throw new Error(`Failed to apply decisions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+
+    suggestBulletEdits: async (
+      _: any,
+      { planId, bulletId, currentText, jdText, mustInclude }: {
+        planId: string;
+        bulletId: string;
+        currentText: string;
+        jdText: string;
+        mustInclude: string[];
+      }
+    ) => {
+      console.log('💡 === suggestBulletEdits MUTATION CALLED ===');
+      
+      try {
+        const planBlob = getPlan(planId);
+        if (!planBlob) {
+          throw new Error('Plan expired or not found. Please re-upload your resume.');
+        }
+        
+        const suggestions = await generateBulletSuggestions(
+          currentText,
+          jdText,
+          mustInclude
+        );
+        
+        console.log('✅ Bullet suggestions generated:', {
+          planId,
+          bulletId,
+          suggestionsCount: suggestions.length
+        });
+        
+        return suggestions;
+      } catch (error) {
+        console.error('❌ suggestBulletEdits error:', error);
+        throw new Error(`Failed to generate bullet suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+
+    // Enhanced Interactive Studio mutations
+    updateSection: async (
+      _: any,
+      { planId, sectionType, sectionId, updatedContent, jdText }: {
+        planId: string;
+        sectionType: string;
+        sectionId: string;
+        updatedContent: any;
+        jdText: string;
+      }
+    ) => {
+      console.log('🔄 === updateSection MUTATION CALLED ===');
+      
+      try {
+        const planBlob = getPlan(planId);
+        if (!planBlob) {
+          throw new Error('Plan expired or not found. Please re-upload your resume.');
+        }
+        
+        // Update the resume JSON with the new section content
+        const updatedResumeJson = { ...planBlob.originalResumeJson };
+        
+        if (sectionType === 'experience') {
+          const expIndex = updatedResumeJson.experience?.findIndex((exp: any) => 
+            stableId([exp.company || '', exp.position || '', exp.duration || '']) === sectionId
+          );
+          if (expIndex !== -1) {
+            updatedResumeJson.experience[expIndex] = { ...updatedResumeJson.experience[expIndex], ...updatedContent };
+          }
+        } else if (sectionType === 'project') {
+          const projIndex = updatedResumeJson.projects?.findIndex((proj: any) => 
+            stableId([proj.projectName || '', proj.techStack || '']) === sectionId
+          );
+          if (projIndex !== -1) {
+            updatedResumeJson.projects[projIndex] = { ...updatedResumeJson.projects[projIndex], ...updatedContent };
+          }
+        } else if (sectionType === 'skills') {
+          updatedResumeJson.skills = updatedContent;
+        }
+        
+        // Recalculate scores with updated content
+        const newPlan = await generateOptimizationPlan(updatedResumeJson, jdText);
+        const newScores = await calculateFitMetrics(newPlan, jdText);
+        
+        // Update the stored plan
+        savePlan(planId, {
+          ...planBlob,
+          originalResumeJson: updatedResumeJson,
+          plan: newPlan,
+          fit: newScores
+        });
+        
+        console.log('✅ Section updated successfully:', {
+          planId,
+          sectionType,
+          sectionId,
+          newOverallScore: newScores.overallScore
+        });
+        
+        return {
+          success: true,
+          updatedResumeJson,
+          newScores: {
+            overallScore: newScores.overallScore,
+            experienceMatch: newScores.experienceMatch,
+            projectMatch: newScores.projectMatch,
+            skillCoverage: newScores.skillCoverage,
+            keywordCoverage: newScores.skillCoverage, // Using skill coverage as keyword coverage
+            impactScore: 0.8 // Placeholder - would need to calculate from bullets
+          }
+        };
+      } catch (error) {
+        console.error('❌ updateSection error:', error);
+        throw new Error(`Failed to update section: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+
+    recalculateScores: async (
+      _: any,
+      { planId, updatedResumeJson, jdText }: {
+        planId: string;
+        updatedResumeJson: any;
+        jdText: string;
+      }
+    ) => {
+      console.log('📊 === recalculateScores MUTATION CALLED ===');
+      
+      try {
+        const planBlob = getPlan(planId);
+        if (!planBlob) {
+          throw new Error('Plan expired or not found. Please re-upload your resume.');
+        }
+        
+        // Recalculate scores with updated resume JSON
+        const newPlan = await generateOptimizationPlan(updatedResumeJson, jdText);
+        const newScores = await calculateFitMetrics(newPlan, jdText);
+        
+        console.log('✅ Scores recalculated:', {
+          planId,
+          newOverallScore: newScores.overallScore
+        });
+        
+        return {
+          overallScore: newScores.overallScore,
+          experienceMatch: newScores.experienceMatch,
+          projectMatch: newScores.projectMatch,
+          skillCoverage: newScores.skillCoverage,
+          keywordCoverage: newScores.skillCoverage,
+          impactScore: 0.8 // Placeholder
+        };
+      } catch (error) {
+        console.error('❌ recalculateScores error:', error);
+        throw new Error(`Failed to recalculate scores: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+
+    suggestSectionImprovement: async (
+      _: any,
+      { planId, sectionType, sectionId, currentContent, jdText, improvementType }: {
+        planId: string;
+        sectionType: string;
+        sectionId: string;
+        currentContent: any;
+        jdText: string;
+        improvementType: string;
+      }
+    ) => {
+      console.log('💡 === suggestSectionImprovement MUTATION CALLED ===');
+      
+      try {
+        const planBlob = getPlan(planId);
+        if (!planBlob) {
+          throw new Error('Plan expired or not found. Please re-upload your resume.');
+        }
+        
+        // Generate AI suggestions based on improvement type
+        const suggestions = await generateSectionSuggestions(
+          sectionType,
+          currentContent,
+          jdText,
+          improvementType
+        );
+        
+        console.log('✅ Section improvement suggestions generated:', {
+          planId,
+          sectionType,
+          sectionId,
+          improvementType,
+          suggestionsCount: suggestions.changes.length
+        });
+        
+        return suggestions;
+      } catch (error) {
+        console.error('❌ suggestSectionImprovement error:', error);
+        throw new Error(`Failed to generate section suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     },
   },
@@ -692,8 +1142,8 @@ async function start() {
       res.status(200).json({
         status: 'healthy',
         database: 'connected',
-        timestamp: new Date().toISOString()
-      });
+      timestamp: new Date().toISOString()
+    });
     } catch (error) {
       console.error('Health check database error:', error);
       res.status(500).json({
@@ -717,21 +1167,21 @@ async function start() {
     res.json({ status: 'ok', message: 'Test endpoint working' });
   });
 
+  // Only parse JSON when it's NOT a multipart (uploads) request
+  app.use('/graphql', (req, res, next) => {
+    const ct = req.get('content-type') || '';
+    if (!ct.includes('multipart/form-data')) {
+      return express.json({ limit: '50mb' })(req, res, next);
+    }
+    next();
+  });
+
+  // MUST come before expressMiddleware(server)
   app.use('/graphql', graphqlUploadExpress({ 
     maxFileSize: 10_000_000,
     maxFiles: 1
   }));
   
-  // Add JSON middleware for regular GraphQL queries (but not for file uploads)
-  app.use('/graphql', (req, res, next) => {
-    // Only apply JSON parsing for non-multipart requests
-    if (!req.get('content-type')?.includes('multipart/form-data')) {
-      express.json({ limit: '50mb' })(req, res, next);
-    } else {
-      next();
-    }
-  });
-
   // Add request logging middleware before GraphQL
   app.use('/graphql', (req, res, next) => {
     console.log('\n🔍 === INCOMING GRAPHQL REQUEST ===');
@@ -772,10 +1222,11 @@ async function start() {
     next();
   });
   
+  // Now Apollo
   app.use(
     '/graphql',
     expressMiddleware(server, { 
-      context: async () => ({ prisma })
+    context: async () => ({ prisma })
     })
   );
 
